@@ -39,7 +39,12 @@ jobs:
       - name: Install
         run: pip install .
       - name: Scan
-        run: python -m automations.cashconverters.run
+        run: |
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "::warning::Telegram secrets are not configured; scan skipped."
+            exit 0
+          fi
+          python -m automations.cashconverters.run
       - name: Save scanner state
         if: always()
         uses: actions/cache/save@v4
