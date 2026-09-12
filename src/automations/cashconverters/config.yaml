@@ -5,52 +5,7 @@ scan:
   minimum_products: 10
   sudden_drop_ratio: 0.25
 
-# Server-rendered, newest-first feeds. Search feeds catch GPUs/components that
-# are outside the desktop category while keeping the request volume modest.
+# V2: all desktop PCs, not keyword searches (which mix PCs and components).
 sources:
   - name: desktops
     url: "https://www.cashconverters.be/fr/164-ordinateurs-de-bureau?order=product.date_add.desc"
-  - name: search-rtx
-    url: "https://www.cashconverters.be/fr/recherche?controller=search&s=rtx&order=product.date_add.desc"
-  - name: search-radeon
-    url: "https://www.cashconverters.be/fr/recherche?controller=search&s=radeon&order=product.date_add.desc"
-  - name: search-ryzen
-    url: "https://www.cashconverters.be/fr/recherche?controller=search&s=ryzen&order=product.date_add.desc"
-  - name: search-gaming
-    url: "https://www.cashconverters.be/fr/recherche?controller=search&s=gaming&order=product.date_add.desc"
-
-scoring:
-  notify_min_score: 4
-  urgent_min_score: 8
-  max_price_eur: 2000
-  category_bonus:
-    ordinateurs-de-bureau: 1
-    ordinateurs de bureau: 1
-  keywords:
-    x3d: 4
-    "rtx 50": 4
-    "rtx 40": 4
-    rtx: 3
-    "rx 9": 4
-    "rx 7": 3
-    radeon: 2
-    ryzen: 2
-    gaming: 2
-    gamer: 2
-    rog: 2
-    omen: 2
-    legion: 2
-    predator: 2
-    erazer: 2
-    msi: 1
-    am5: 2
-    am4: 1
-    gtx: 1
-  exclusions:
-    imac: -6
-    macbook: -6
-    clavier: -3
-    souris: -3
-    housse: -4
-    chargeur: -4
-  allowed_stores: []

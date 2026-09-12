@@ -1,4 +1,5 @@
 name: Telegram notification test
+# Editing this workflow intentionally triggers one real smoke test.
 
 on:
   workflow_dispatch:

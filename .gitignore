@@ -12,6 +12,7 @@ storage/*.db-*
 storage/*.sqlite*
 storage/*.json
 logs/
+public/
 
 # Python / editors
 __pycache__/

@@ -1,0 +1,10 @@
+# Starter reference, not an exhaustive catalogue. Unknown models require review.
+# Sources: AMD desktop processor specifications (AM4/DDR4, AM5/DDR5).
+platforms:
+  AM5: [7500F, 7600, 7600X, 7600X3D, 7700, 7700X, 7800X3D, 7900, 7900X, 7900X3D, 7950X, 7950X3D, 8400F, 8500G, 8600G, 8700F, 8700G, 9600, 9600X, 9700X, 9800X3D, 9900X, 9900X3D, 9950X, 9950X3D]
+  AM4: [1600, 1600X, 1700, 1700X, 1800X, 2200G, 2400G, 2600, 2600X, 2700, 2700X, 3100, 3200G, 3300X, 3400G, 3500X, 3600, 3600X, 3600XT, 3700X, 3800X, 3800XT, 3900X, 3950X, 4100, 4500, 4600G, 4650G, 4700G, 4750G, 5500, 5500GT, 5600, 5600G, 5600GT, 5600X, 5600X3D, 5700, 5700G, 5700X, 5700X3D, 5800X, 5800XT, 5800X3D, 5900X, 5900XT, 5950X]
+offers:
+  - {id: am5, platform: AM5, max_eur: 1200, reason: 'AM5 à 1 200 € maximum'}
+  - {id: am4_budget, platform: AM4, max_eur: 500, reason: 'AM4 à 500 € maximum'}
+  - {id: am4_5060, platform: AM4, gpu: 'RTX 5060', max_eur: 700, exclusive: true, reason: 'AM4 + RTX 5060 sous 700 €'}
+# Higher-GPU/Intel price thresholds need confirmation, not a numeric GPU ranking.

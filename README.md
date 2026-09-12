@@ -3,15 +3,19 @@
 Une base Python simple, modulaire et portable pour toutes les automatisations personnelles.
 Cash Converters Belgique est le premier module, pas le projet entier.
 
-## Ce que fait la V1
+## Ce que fait la V2
 
-- surveille les PC fixes ainsi que des recherches ciblées Ryzen/RTX/Radeon/Gaming ;
+- surveille tous les PC fixes, triés par ajout récent ;
 - utilise uniquement HTTP + HTML (aucun navigateur et aucun LLM) ;
 - reconnaît les produits par l'ID stable Cash Converters ;
 - initialise silencieusement l'état au premier lancement ;
-- enrichit seulement les nouvelles fiches pour limiter les requêtes ;
-- calcule un score déterministe configurable ;
-- envoie les résultats pertinents via une interface commune (console ou Telegram) ;
+- enrichit progressivement les fiches utiles pour limiter les requêtes ;
+- extrait CPU, plateforme, RAM, GPU et stockage sans LLM, avec niveaux de confiance ;
+- applique des règles Offre explicites et configurables, sans score ;
+- suit les prix des 100 PC récents toutes les deux heures ;
+- suit l'état du bouton Réserver quand une fiche est contrôlée ;
+- accepte des commandes Telegram et prépare des préférences par utilisateur ;
+- génère une petite page de consultation statique ;
 - conserve les exécutions, produits et notifications dans SQLite ;
 - refuse un résultat vide ou une chute anormale au lieu d'effacer l'état connu.
 
@@ -26,7 +30,7 @@ src/
 │   │   └── notifications/    # contrat + sortie console
 │   └── integrations/         # Telegram, puis Discord/Google/etc.
 └── automations/
-    └── cashconverters/       # scraping, parsing, scoring et commande
+    └── cashconverters/       # scraping, extraction, règles et commande
 ```
 
 La logique Cash Converters ne dépend ni de Telegram, ni de GitHub Actions, ni d'un fournisseur
@@ -44,13 +48,14 @@ cp .env.example .env
 python -m automations.cashconverters.run
 ```
 
-Au premier succès, les annonces présentes deviennent la référence et aucune notification n'est
-envoyée. Les exécutions suivantes signalent uniquement les nouveaux IDs.
+Au premier succès V2, les 17 pages (343 PC lors de la dernière inspection) deviennent la référence
+et aucune notification produit n'est envoyée. Les scans ordinaires lisent les deux pages récentes.
 
 ## Configuration
 
-Les sources, mots-clés, pondérations, seuils, magasins et prix maximum sont dans
-`src/automations/cashconverters/config.yaml`.
+Le rythme et la source sont dans `config.yaml`. Le référentiel AM4/AM5 et les règles Offre sont
+dans `hardware.yaml`. Les règles initiales sont : AM5 ≤ 1 200 €, AM4 ≤ 500 €, et AM4 avec RTX 5060
+strictement sous 700 €. Les configurations plus chères ne sont pas déclarées Offre sans règle.
 
 Variables d'environnement :
 
@@ -71,6 +76,29 @@ Ne jamais remplir `.env.example`. Créer `.env` localement ; il est ignoré par 
 3. Récupérer le `chat_id` via `https://api.telegram.org/bot<TOKEN>/getUpdates`.
 4. Placer les deux valeurs dans `.env` localement ou dans les secrets GitHub.
 5. Définir `NOTIFICATION_BACKEND=telegram`.
+
+Commandes (traitées au prochain scan, donc sous environ 15 minutes) :
+
+- `/mode tous`, `/mode offres`, `/mode resume`, `/mode pause` ;
+- `/rapport on` ou `/rapport off` ;
+- `/test`, `/status`, `/help` ;
+- `/corriger ID ram_gb=32 ram_type=DDR5` corrige uniquement l'annonce indiquée.
+
+Le mode initial est `resume` avec compte rendu à chaque scan. Les Offres sont immédiates et les
+autres nouveaux PC sont regroupés. Les cas ambigus (maximum cinq) sont demandés une fois par jour
+au premier passage après midi, heure de Bruxelles. Les commandes d'autres chats sont ignorées.
+
+Une panne du site ou du parseur produit une alerte technique dédupliquée. La répétition est évitée
+pendant la même panne, puis un message confirme le rétablissement.
+
+Un test cloud manuel reste disponible dans Actions > `Telegram notification test`.
+
+## Petite page
+
+`python scripts/generate_dashboard.py` génère `public/index.html` avec les 100 PC récents, les
+informations matérielles, les Offres et l'état de réservation connu. Aucune clé ni préférence
+privée n'y apparaît. Le workflow `Dashboard` peut la publier sur GitHub Pages toutes les deux
+heures ; Pages doit être activé avec la source **GitHub Actions** dans les paramètres du dépôt.
 
 ## Docker et homelab
 
@@ -117,9 +145,8 @@ ruff check .
 python scripts/check_secrets.py
 ```
 
-Les tests couvrent le parsing, le stockage, le bootstrap silencieux, une nouvelle annonce,
-l'absence de doublon, la panne réseau, la page vide, le changement de structure et la chute
-anormale du nombre de produits.
+Les tests couvrent aussi l'extraction matérielle, les règles AM4/AM5, le suivi de prix,
+la réservation, les commandes, le dashboard et les alertes techniques.
 
 ## Ajouter une automatisation
 

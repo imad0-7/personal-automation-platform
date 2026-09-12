@@ -55,6 +55,12 @@ def parse_catalog(html: str, feed_name: str) -> list[Listing]:
         price_node = card.select_one(".price")
         store_node = card.select_one(".magasin")
         image_node = card.select_one("img[src]")
+        reserve_control = card.select_one('button[data-button-action="add-to-cart"]')
+        reservable = (
+            not (reserve_control.has_attr('disabled')
+                 or reserve_control.get('aria-disabled') == 'true')
+            if reserve_control is not None else None
+        )
         flags = {x.get_text(" ", strip=True).casefold() for x in card.select(".product-flag")}
         listings.append(Listing(
             source="cashconverters",
@@ -64,7 +70,11 @@ def parse_catalog(html: str, feed_name: str) -> list[Listing]:
             price_cents=_price_to_cents(price_node.get_text(" ", strip=True)) if price_node else None,
             store=re.sub(r"^storefront\s*", "", store_node.get_text(" ", strip=True), flags=re.IGNORECASE) if store_node else None,
             category=category,
-            attributes={"feed": feed_name},
+            attributes={
+                "feed": feed_name,
+                "reservable": reservable,
+                "reservation_checked_at": datetime.now(UTC).isoformat(),
+            },
             image_url=str(image_node.get("data-full-size-image-url") or image_node.get("src")) if image_node else None,
             is_new_badge="nouveau" in flags,
         ))
@@ -101,4 +111,11 @@ def enrich_from_detail(listing: Listing, html: str) -> Listing:
     cover = data.get("cover") or {}
     listing.image_url = cover.get("large", {}).get("url") or listing.image_url
     listing.is_new_badge = bool(data.get("new", listing.is_new_badge))
+    # Only the main product control, never recommendation-card buttons.
+    control = soup.select_one('button.add-to-cart[data-button-action="add-to-cart"]')
+    listing.attributes['reservable'] = (
+        not (control.has_attr('disabled') or control.get('aria-disabled') == 'true')
+        if control is not None else None
+    )
+    listing.attributes['reservation_checked_at'] = datetime.now(UTC).isoformat()
     return listing

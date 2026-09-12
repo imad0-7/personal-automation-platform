@@ -55,6 +55,14 @@ CREATE TABLE IF NOT EXISTS notification_outbox (
     UNIQUE (automation, source, external_id)
 );
 CREATE INDEX IF NOT EXISTS idx_outbox_pending ON notification_outbox(automation, status);
+CREATE TABLE IF NOT EXISTS platform_state (
+    namespace TEXT NOT NULL, key TEXT NOT NULL, value_json TEXT NOT NULL,
+    PRIMARY KEY(namespace, key)
+);
+CREATE TABLE IF NOT EXISTS price_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT NOT NULL,
+    external_id TEXT NOT NULL, price_cents INTEGER NOT NULL, observed_at TEXT NOT NULL
+);
 """
 
 
@@ -123,6 +131,13 @@ class SQLiteRepository:
 
     def save_listings(self, listings: Sequence[Listing]) -> None:
         now = _iso_now()
+        for item in listings:
+            old = self.get_listing(item.source, item.external_id)
+            if item.price_cents is not None and (old is None or old.price_cents != item.price_cents):
+                self.connection.execute(
+                    'INSERT INTO price_history(source,external_id,price_cents,observed_at) VALUES (?,?,?,?)',
+                    (item.source, item.external_id, item.price_cents, now),
+                )
         self.connection.executemany(
             """INSERT INTO listings(
                    source, external_id, title, url, price_cents, store, category,
@@ -190,6 +205,56 @@ class SQLiteRepository:
 
     def close(self) -> None:
         self.connection.close()
+
+    def state(self, namespace: str, key: str, default=None):
+        row = self.connection.execute(
+            'SELECT value_json FROM platform_state WHERE namespace=? AND key=?',
+            (namespace, key),
+        ).fetchone()
+        return json.loads(row['value_json']) if row else default
+
+    def set_state(self, namespace: str, key: str, value) -> None:
+        self.connection.execute(
+            '''INSERT INTO platform_state VALUES (?,?,?) ON CONFLICT(namespace,key)
+            DO UPDATE SET value_json=excluded.value_json''',
+            (namespace, key, json.dumps(value, ensure_ascii=False)),
+        )
+        self.connection.commit()
+
+    def get_listing(self, source: str, external_id: str) -> Listing | None:
+        row = self.connection.execute(
+            'SELECT * FROM listings WHERE source=? AND external_id=?', (source, external_id),
+        ).fetchone()
+        if row is None:
+            return None
+        return Listing(
+            source=row['source'], external_id=row['external_id'], title=row['title'],
+            url=row['url'], price_cents=row['price_cents'], store=row['store'],
+            category=row['category'], attributes=json.loads(row['attributes_json']),
+            image_url=row['image_url'], is_new_badge=bool(row['is_new_badge']),
+            published_at=datetime.fromisoformat(row['published_at']) if row['published_at'] else None,
+        )
+
+    def queue_event(self, automation: str, key: str, notification: Notification) -> None:
+        self.enqueue_notification(automation, Listing(
+            source='events-v2', external_id=key, title='', url='',
+        ), notification)
+
+    def cancel_legacy_notifications(self, automation: str) -> None:
+        self.connection.execute(
+            "UPDATE notification_outbox SET status='superseded' WHERE automation=? "
+            "AND source != 'events-v2' AND status='pending'", (automation,),
+        )
+        self.connection.commit()
+
+    def recent_listings(self, source: str, limit: int = 100) -> list[Listing]:
+        rows = self.connection.execute(
+            'SELECT external_id FROM listings WHERE source=? '
+            'ORDER BY COALESCE(published_at, first_seen_at) DESC LIMIT ?',
+            (source, limit),
+        ).fetchall()
+        return [item for row in rows
+                if (item := self.get_listing(source, str(row['external_id']))) is not None]
 
 
 def repository_from_url(url: str) -> SQLiteRepository:

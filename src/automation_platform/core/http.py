@@ -27,7 +27,10 @@ class HttpClient:
         self._client = httpx.Client(
             follow_redirects=True,
             timeout=self.policy.timeout_seconds,
-            headers={"User-Agent": self.policy.user_agent, "Accept": "text/html,application/json"},
+            # Cash Converters currently returns an empty product page for the mixed
+            # text/html,application/json Accept value. JSON catalogue fragments remain
+            # supported by the parser, but normal navigation explicitly asks for HTML.
+            headers={"User-Agent": self.policy.user_agent, "Accept": "text/html"},
             transport=transport,
         )
 
