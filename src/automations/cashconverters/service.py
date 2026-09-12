@@ -105,6 +105,8 @@ class CashConvertersAutomation:
                            and old_price != listing.price_cents)
                 if old:
                     listing.attributes = {**old.attributes, **listing.attributes}
+                if new:
+                    listing.attributes['discovered_at'] = now.isoformat()
                 needs_detail = new or changed or listing.external_id in deferred or (
                     not baseline and index < 100 and not listing.attributes.get('detail_checked'))
                 fresh = False
