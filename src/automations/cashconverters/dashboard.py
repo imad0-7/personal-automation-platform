@@ -6,10 +6,22 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 BRUSSELS = ZoneInfo('Europe/Brussels')
+MONTHS_FR = ('janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+             'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre')
 
 
 def _e(value: object) -> str:
     return html.escape(str(value), quote=True)
+
+
+def _format_scan_time(value: object) -> str:
+    if not isinstance(value, str):
+        return 'Pas encore de scan'
+    try:
+        local = datetime.fromisoformat(value).astimezone(BRUSSELS)
+    except ValueError:
+        return value
+    return f'{local.day} {MONTHS_FR[local.month - 1]} {local.year} à {local:%H:%M}'
 
 
 def _field(listing, name: str, default: str = 'Inconnu') -> str:
@@ -98,7 +110,7 @@ def build_html(repo) -> str:
     cards = {x.external_id: _card(x) for x in listings}
     status = state.get('status', 'INCONNU')
     status_class = 'ok' if status == 'SUCCESS' else 'bad'
-    last_scan = state.get('finished_at', 'Pas encore de scan')
+    last_scan = _format_scan_time(state.get('finished_at'))
     errors = len(state.get('errors', []))
     now_local = datetime.now(UTC).astimezone(BRUSSELS)
     today = [(item, seen) for item, seen in discoveries
