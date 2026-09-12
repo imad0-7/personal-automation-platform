@@ -71,12 +71,14 @@ class CashConvertersAutomation:
                 summary.errors.append('command_poll: ' + type(exc).__name__)
             prefs = repo.state(self.namespace, 'preferences', DEFAULTS.copy())
             baseline = not repo.state(STATE, 'baseline', False)
+            ranking_refresh = not repo.state(STATE, 'ranking_initialized', False)
             last_price = repo.state(STATE, 'last_price_scan', 0)
             price_snapshot = repo.state(STATE, 'price_snapshot', {})
             price_scan = now.timestamp() - last_price >= 7200
             known = set(repo.state(STATE, 'known_catalog', []))
             if isinstance(self.scraper, CashConvertersScraper):
-                listings = self.scraper.collect(full=baseline, price_scan=price_scan, known_ids=known)
+                listings = self.scraper.collect(full=baseline or ranking_refresh,
+                                                price_scan=price_scan, known_ids=known)
             else:
                 listings = self.scraper.collect()
             summary.observed = len(listings)
@@ -168,6 +170,7 @@ class CashConvertersAutomation:
             if baseline:
                 repo.cancel_legacy_notifications(AUTOMATION_NAME)
                 repo.set_state(STATE, 'baseline', True)
+            repo.set_state(STATE, 'ranking_initialized', True)
             incident = repo.state(STATE, 'incident')
             if incident:
                 self._queue('recovery:' + incident['id'], Notification(
@@ -204,7 +207,9 @@ class CashConvertersAutomation:
         summary.finished_at = utc_now()
         repo.set_state(STATE, 'last_status', {
             'status': summary.status.value, 'finished_at': summary.finished_at.isoformat(),
-            'observed': summary.observed, 'new': summary.discovered, 'errors': summary.errors,
+            'observed': summary.observed, 'new': summary.discovered,
+            'requests': summary.requests_count, 'notifications': summary.notifications_sent,
+            'errors': summary.errors,
         })
         repo.finish_run(run_id, summary)
         log_event(self.logger, logging.INFO, 'automation_completed', status=summary.status.value,

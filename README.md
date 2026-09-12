@@ -100,6 +100,11 @@ informations matérielles, les Offres et l'état de réservation connu. Aucune c
 privée n'y apparaît. Le workflow `Dashboard` la publie sur GitHub Pages toutes les deux heures et
 peut aussi être lancé manuellement. Pages utilise la source **GitHub Actions**.
 
+Le dashboard conserve l'ordre exact du tri « ajoutés récemment » de Cash Converters. Il propose
+une vue d'ensemble avec indicateurs et répartitions, puis des onglets Offres, 100 derniers PC,
+changements de prix et annonces réellement analysées à clarifier. Une recherche et un filtre de
+disponibilité permettent de parcourir les 100 derniers PC.
+
 ## Docker et homelab
 
 Un scan unique :

@@ -250,11 +250,28 @@ class SQLiteRepository:
     def recent_listings(self, source: str, limit: int = 100) -> list[Listing]:
         rows = self.connection.execute(
             'SELECT external_id FROM listings WHERE source=? '
-            'ORDER BY COALESCE(published_at, first_seen_at) DESC LIMIT ?',
+            "ORDER BY CASE WHEN json_extract(attributes_json, '$.catalog_rank') IS NULL "
+            "THEN 1 ELSE 0 END, CAST(json_extract(attributes_json, '$.catalog_rank') AS INTEGER), "
+            'CAST(external_id AS INTEGER) DESC LIMIT ?',
             (source, limit),
         ).fetchall()
         return [item for row in rows
                 if (item := self.get_listing(source, str(row['external_id']))) is not None]
+
+    def recent_price_changes(self, source: str, limit: int = 30) -> list[dict]:
+        rows = self.connection.execute(
+            '''WITH history AS (
+                SELECT id, external_id, price_cents, observed_at,
+                       LAG(price_cents) OVER (PARTITION BY source, external_id ORDER BY id) old_price
+                FROM price_history WHERE source=?
+            )
+            SELECT h.external_id, h.old_price, h.price_cents, h.observed_at, l.title, l.url
+            FROM history h JOIN listings l ON l.source=? AND l.external_id=h.external_id
+            WHERE h.old_price IS NOT NULL AND h.old_price != h.price_cents
+            ORDER BY h.id DESC LIMIT ?''',
+            (source, source, limit),
+        ).fetchall()
+        return [dict(row) for row in rows]
 
 
 def repository_from_url(url: str) -> SQLiteRepository:

@@ -59,7 +59,11 @@ class CashConvertersScraper:
                     time.sleep(0.3)
                     items = parse_catalog(self.http.get_text(with_page(feed.url, page)), feed.name)
                 before = len(by_id)
-                for listing in items:
+                for position, listing in enumerate(items, start=1):
+                    listing.attributes['catalog_rank'] = (
+                        (page - 1) * len(first_items) + position
+                    )
+                    listing.attributes['catalog_total'] = int(count) if count else None
                     current = by_id.get(listing.external_id)
                     if current is None:
                         listing.attributes["feeds"] = [feed.name]
