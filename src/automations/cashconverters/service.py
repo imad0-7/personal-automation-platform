@@ -71,7 +71,6 @@ class CashConvertersAutomation:
                 summary.errors.append('command_poll: ' + type(exc).__name__)
             prefs = repo.state(self.namespace, 'preferences', DEFAULTS.copy())
             baseline = not repo.state(STATE, 'baseline', False)
-            ranking_refresh = not repo.state(STATE, 'ranking_initialized', False)
             last_price = repo.state(STATE, 'last_price_scan', 0)
             price_snapshot = repo.state(STATE, 'price_snapshot', {})
             price_scan = now.timestamp() - last_price >= 7200
