@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 
 from ..models import Listing, Notification, RunSummary
@@ -27,3 +28,6 @@ class ListingRepository(Protocol):
     def cancel_legacy_notifications(self, automation: str) -> None: ...
     def recent_listings(self, source: str, limit: int = 100) -> list[Listing]: ...
     def recent_price_changes(self, source: str, limit: int = 30) -> list[dict]: ...
+    def listing_discoveries(
+        self, source: str, automation: str, limit: int = 5000
+    ) -> list[tuple[Listing, datetime]]: ...
