@@ -2,6 +2,9 @@ name: Dashboard
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Cash Converters monitor"]
+    types: [completed]
   schedule:
     - cron: "5 */2 * * *"
   push:
@@ -21,6 +24,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
