@@ -97,9 +97,8 @@ Un test cloud manuel reste disponible dans Actions > `Telegram notification test
 
 `python scripts/generate_dashboard.py` génère `public/index.html` avec les 100 PC récents, les
 informations matérielles, les Offres et l'état de réservation connu. Aucune clé ni préférence
-privée n'y apparaît. Le workflow manuel `Dashboard` peut la publier sur GitHub Pages. Pages doit
-d'abord être activé avec la source **GitHub Actions** dans les paramètres du dépôt ; la fréquence
-de deux heures sera activée après cette étape pour ne pas créer d'exécutions en échec.
+privée n'y apparaît. Le workflow `Dashboard` la publie sur GitHub Pages toutes les deux heures et
+peut aussi être lancé manuellement. Pages utilise la source **GitHub Actions**.
 
 ## Docker et homelab
 
