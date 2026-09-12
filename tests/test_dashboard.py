@@ -19,6 +19,17 @@ def test_dashboard_escapes_remote_content(tmp_path):
     assert 'Dernière nouveauté détectée' in page
 
 
+def test_dashboard_formats_scan_time_in_brussels_timezone(tmp_path):
+    repo = SQLiteRepository(tmp_path / 'state.db')
+    repo.migrate()
+    repo.set_state('cashconverters-v2', 'last_status', {
+        'status': 'SUCCESS', 'finished_at': '2026-09-12T20:57:17.942109+00:00',
+    })
+    page = build_html(repo)
+    assert '12 septembre 2026 à 22:57' in page
+    assert '2026-09-12T20:57:17.942109+00:00' not in page
+
+
 def test_dashboard_uses_catalog_rank_not_insertion_order(tmp_path):
     repo = SQLiteRepository(tmp_path / 'state.db')
     repo.migrate()
