@@ -77,7 +77,9 @@ class CashConvertersAutomation:
             price_scan = now.timestamp() - last_price >= 7200
             known = set(repo.state(STATE, 'known_catalog', []))
             if isinstance(self.scraper, CashConvertersScraper):
-                listings = self.scraper.collect(full=baseline or ranking_refresh,
+                # The reservation button is present on catalogue cards. Reading every
+                # catalogue page keeps availability current without fetching 343 details.
+                listings = self.scraper.collect(full=True,
                                                 price_scan=price_scan, known_ids=known)
             else:
                 listings = self.scraper.collect()
