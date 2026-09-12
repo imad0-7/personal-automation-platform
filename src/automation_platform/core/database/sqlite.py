@@ -273,6 +273,29 @@ class SQLiteRepository:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def listing_discoveries(
+        self, source: str, automation: str, limit: int = 5000
+    ) -> list[tuple[Listing, datetime]]:
+        """Return genuine discoveries, excluding the silent initial catalogue baseline."""
+        baseline = self.connection.execute(
+            "SELECT finished_at FROM automation_runs WHERE automation=? AND status='SUCCESS' "
+            "AND finished_at IS NOT NULL ORDER BY id LIMIT 1",
+            (automation,),
+        ).fetchone()
+        if baseline is None:
+            return []
+        rows = self.connection.execute(
+            "SELECT external_id, first_seen_at FROM listings WHERE source=? "
+            "AND first_seen_at > ? ORDER BY first_seen_at DESC LIMIT ?",
+            (source, baseline['finished_at'], limit),
+        ).fetchall()
+        result = []
+        for row in rows:
+            item = self.get_listing(source, str(row['external_id']))
+            if item is not None:
+                result.append((item, datetime.fromisoformat(row['first_seen_at'])))
+        return result
+
 
 def repository_from_url(url: str) -> SQLiteRepository:
     prefix = "sqlite:///"
