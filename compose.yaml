@@ -1,0 +1,15 @@
+services:
+  cashconverters-once:
+    build: .
+    env_file: .env
+    volumes:
+      - ./storage:/app/storage
+    command: python -m automations.cashconverters.run
+
+  cashconverters:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - ./storage:/app/storage
+    command: python scripts/run_cashconverters_loop.py

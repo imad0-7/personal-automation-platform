@@ -1,0 +1,58 @@
+name: Cash Converters monitor
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: cashconverters-monitor
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      AUTOMATION_ENV: production
+      AUTOMATION_DB_URL: sqlite:///storage/automation.db
+      AUTOMATION_LOG_LEVEL: INFO
+      NOTIFICATION_BACKEND: telegram
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Restore scanner state
+        uses: actions/cache/restore@v4
+        with:
+          path: storage/automation.db
+          key: cashconverters-state-${{ github.run_id }}
+          restore-keys: cashconverters-state-
+      - name: Install
+        run: pip install .
+      - name: Scan
+        run: python -m automations.cashconverters.run
+      - name: Save scanner state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: storage/automation.db
+          key: cashconverters-state-${{ github.run_id }}
+      - name: Remove superseded scanner caches
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_KEY: cashconverters-state-${{ github.run_id }}
+        run: |
+          gh cache list --key cashconverters-state- --json id,key --limit 100 | \
+            jq -r --arg current "$CURRENT_KEY" '.[] | select(.key != $current) | .id' | \
+            xargs -r -n1 gh cache delete || true

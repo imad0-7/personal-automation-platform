@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "personal-automation-platform"
+version = "0.1.0"
+description = "Portable platform for personal automations"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "beautifulsoup4>=4.12,<5",
+  "httpx[socks]>=0.27,<1",
+  "PyYAML>=6.0,<7",
+  "python-dotenv>=1.0,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "pytest-cov>=5,<7", "ruff>=0.6,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/automation_platform", "src/automations"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: reaches a real external website"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
