@@ -1,6 +1,6 @@
 from automation_platform.core.database.sqlite import SQLiteRepository
 from automation_platform.core.models import Listing
-from scripts.generate_dashboard import build_html
+from automations.cashconverters.dashboard import build_html
 
 
 def test_dashboard_escapes_remote_content(tmp_path):
