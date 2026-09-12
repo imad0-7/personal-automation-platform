@@ -5,7 +5,6 @@ from collections import Counter
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
-
 BRUSSELS = ZoneInfo('Europe/Brussels')
 
 
