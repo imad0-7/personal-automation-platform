@@ -276,24 +276,18 @@ class SQLiteRepository:
     def listing_discoveries(
         self, source: str, automation: str, limit: int = 5000
     ) -> list[tuple[Listing, datetime]]:
-        """Return genuine discoveries, excluding the silent initial catalogue baseline."""
-        baseline = self.connection.execute(
-            "SELECT finished_at FROM automation_runs WHERE automation=? AND status='SUCCESS' "
-            "AND finished_at IS NOT NULL ORDER BY id LIMIT 1",
-            (automation,),
-        ).fetchone()
-        if baseline is None:
-            return []
+        """Return only listings explicitly marked as new by the automation."""
         rows = self.connection.execute(
-            "SELECT external_id, first_seen_at FROM listings WHERE source=? "
-            "AND first_seen_at > ? ORDER BY first_seen_at DESC LIMIT ?",
-            (source, baseline['finished_at'], limit),
+            "SELECT external_id, json_extract(attributes_json, '$.discovered_at') discovered_at "
+            "FROM listings WHERE source=? AND discovered_at IS NOT NULL "
+            "ORDER BY discovered_at DESC LIMIT ?",
+            (source, limit),
         ).fetchall()
         result = []
         for row in rows:
             item = self.get_listing(source, str(row['external_id']))
             if item is not None:
-                result.append((item, datetime.fromisoformat(row['first_seen_at'])))
+                result.append((item, datetime.fromisoformat(row['discovered_at'])))
         return result
 
 
