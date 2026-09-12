@@ -7,6 +7,8 @@ on:
   push:
     paths:
       - ".github/workflows/dashboard.yml"
+      - "src/automations/cashconverters/dashboard.py"
+      - "scripts/generate_dashboard.py"
 
 permissions:
   contents: read
