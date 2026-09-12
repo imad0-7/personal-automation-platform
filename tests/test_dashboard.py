@@ -47,3 +47,17 @@ def test_dashboard_excludes_initial_catalogue_from_discoveries(tmp_path):
                          finished_at=utc_now(), status=RunStatus.SUCCESS)
     repo.finish_run(run_id, summary)
     assert repo.listing_discoveries('cashconverters', 'cashconverters') == []
+
+
+def test_dashboard_includes_explicit_discovery(tmp_path):
+    from automation_platform.core.models import utc_now
+
+    repo = SQLiteRepository(tmp_path / 'state.db')
+    repo.migrate()
+    item = Listing(source='cashconverters', external_id='new', title='Nouveau PC',
+                   url='https://example.test/new')
+    item.attributes['discovered_at'] = utc_now().isoformat()
+    repo.save_listings([item])
+    page = build_html(repo)
+    assert 'Nouveautés aujourd’hui <b>1</b>' in page
+    assert 'Détecté à' in page
