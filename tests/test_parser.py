@@ -31,3 +31,35 @@ def test_enriches_from_prestashop_product_data(fixture_dir: Path):
 def test_empty_or_changed_structure_is_failure(body: str):
     with pytest.raises(ParserFailure):
         parse_catalog(body, "test")
+
+
+def test_catalog_prefers_lazy_loaded_image_url():
+    body = """
+    <div id="js-product-list">
+      <article class="product-miniature" data-id-product="42">
+        <a class="product-thumbnail" href="https://www.cashconverters.be/fr/ordinateurs-de-bureau/42-test.html">
+          <img src="data:image/gif;base64,placeholder" data-src="https://cdn.example.test/real.jpg">
+        </a>
+        <h2 class="product-title"><a href="https://www.cashconverters.be/fr/ordinateurs-de-bureau/42-test.html">Test PC</a></h2>
+        <span class="price">499,00 €</span>
+      </article>
+    </div>
+    """
+    item = parse_catalog(body, "desktops")[0]
+    assert item.image_url == "https://cdn.example.test/real.jpg"
+
+
+def test_catalog_uses_largest_srcset_candidate():
+    body = """
+    <div id="js-product-list">
+      <article class="product-miniature" data-id-product="43">
+        <a class="product-thumbnail" href="https://www.cashconverters.be/fr/ordinateurs-de-bureau/43-test.html">
+          <img srcset="https://cdn.example.test/small.jpg 320w, https://cdn.example.test/large.jpg 960w">
+        </a>
+        <h2 class="product-title"><a href="https://www.cashconverters.be/fr/ordinateurs-de-bureau/43-test.html">Test PC 2</a></h2>
+        <span class="price">599,00 €</span>
+      </article>
+    </div>
+    """
+    item = parse_catalog(body, "desktops")[0]
+    assert item.image_url == "https://cdn.example.test/large.jpg"
