@@ -63,3 +63,20 @@ def test_catalog_uses_largest_srcset_candidate():
     """
     item = parse_catalog(body, "desktops")[0]
     assert item.image_url == "https://cdn.example.test/large.jpg"
+
+
+def test_catalog_normalizes_relative_product_url():
+    body = """
+    <div id="js-product-list">
+      <article class="product-miniature" data-id-product="44">
+        <a class="product-thumbnail" href="/fr/ordinateurs-de-bureau/44-test.html">
+          <img src="/img/test.jpg">
+        </a>
+        <h2 class="product-title"><a href="/fr/ordinateurs-de-bureau/44-test.html">Test PC 3</a></h2>
+        <span class="price">699,00 €</span>
+      </article>
+    </div>
+    """
+    item = parse_catalog(body, "desktops")[0]
+    assert item.url == "https://www.cashconverters.be/fr/ordinateurs-de-bureau/44-test.html"
+    assert item.image_url == "https://www.cashconverters.be/img/test.jpg"
