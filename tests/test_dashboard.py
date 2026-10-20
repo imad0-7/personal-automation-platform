@@ -72,3 +72,24 @@ def test_dashboard_includes_explicit_discovery(tmp_path):
     page = build_html(repo)
     assert 'Nouveautés aujourd’hui <b>1</b>' in page
     assert 'Détecté à' in page
+
+
+def test_dashboard_offers_have_independent_filters(tmp_path):
+    repo = SQLiteRepository(tmp_path / 'state.db')
+    repo.migrate()
+    item = Listing(source='cashconverters', external_id='deal', title='Ryzen Deal',
+                   url='https://example.test/deal', price_cents=40000)
+    item.attributes.update({
+        'offer_reasons': ['AM4 sous le plafond'],
+        'reservable': True,
+        'hardware': {'fields': {'platform': {'value': 'AM4'},
+                                'cpu': {'value': 'Ryzen 5 5600'},
+                                'gpu': {'value': 'RTX 3060'}}},
+    })
+    repo.save_listings([item])
+    page = build_html(repo)
+    assert 'id="offers-grid"' in page
+    assert 'id="offer-search"' in page
+    assert 'id="offer-availability"' in page
+    assert 'id="offer-platform"' in page
+    assert "setupFilters('#offers-grid'" in page
