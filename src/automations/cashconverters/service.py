@@ -16,6 +16,7 @@ from .scraper import CashConvertersScraper
 
 AUTOMATION_NAME = 'cashconverters'
 STATE = 'cashconverters-v2'
+CLARIFICATION_RETRY_SECONDS = 24 * 60 * 60
 
 
 class SuspiciousScan(RuntimeError):
@@ -111,7 +112,22 @@ class CashConvertersAutomation:
                     listing.attributes = {**old.attributes, **listing.attributes}
                 if new:
                     listing.attributes['discovered_at'] = now.isoformat()
-                needs_detail = new or changed or listing.external_id in deferred or (
+                old_questions = listing.attributes.get('hardware', {}).get('questions', [])
+                clarification_checked = listing.attributes.get('clarification_checked_at')
+                clarification_due = False
+                if old_questions and listing.attributes.get('detail_checked'):
+                    if not clarification_checked:
+                        clarification_due = True
+                    else:
+                        try:
+                            clarification_due = (
+                                now.timestamp() - __import__('datetime').datetime.fromisoformat(
+                                    clarification_checked
+                                ).timestamp() >= CLARIFICATION_RETRY_SECONDS
+                            )
+                        except (TypeError, ValueError):
+                            clarification_due = True
+                needs_detail = new or changed or listing.external_id in deferred or clarification_due or (
                     not baseline and index < 100 and not listing.attributes.get('detail_checked'))
                 fresh = False
                 if needs_detail and budget > 0:
@@ -119,6 +135,8 @@ class CashConvertersAutomation:
                     try:
                         self.scraper.enrich(listing)
                         listing.attributes['detail_checked'] = True
+                        if clarification_due:
+                            listing.attributes['clarification_checked_at'] = now.isoformat()
                         fresh = True
                     except (ParserFailure, httpx.HTTPError) as exc:
                         summary.errors.append('detail ' + listing.external_id + ': ' + type(exc).__name__)
@@ -143,9 +161,11 @@ class CashConvertersAutomation:
                                        f'{old_price / 100:.2f} → {listing.price_cents / 100:.2f} €\n'
                                        + listing.url))
                 questions = listing.attributes['hardware']['questions']
-                if not baseline and questions and not correction and (new or fresh):
+                if not baseline and questions and not correction:
                     review[listing.external_id] = {'title': listing.title[:150], 'url': listing.url,
                                                    'questions': questions}
+                else:
+                    review.pop(listing.external_id, None)
                 known.add(listing.external_id)
                 if index < 100 and (baseline or price_scan or new):
                     price_snapshot[listing.external_id] = listing.price_cents
