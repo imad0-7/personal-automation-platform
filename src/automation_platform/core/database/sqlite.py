@@ -273,6 +273,16 @@ class SQLiteRepository:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def successful_runs(self, automation: str, limit: int = 10000) -> list[dict]:
+        rows = self.connection.execute(
+            """SELECT id, started_at, finished_at, observed, discovered
+               FROM automation_runs
+               WHERE automation=? AND status='SUCCESS' AND finished_at IS NOT NULL
+               ORDER BY id ASC LIMIT ?""",
+            (automation, limit),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
     def listing_discoveries(
         self, source: str, automation: str, limit: int = 5000
     ) -> list[tuple[Listing, datetime]]:
