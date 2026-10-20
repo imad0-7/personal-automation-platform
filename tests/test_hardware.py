@@ -42,3 +42,34 @@ def test_unknown_cpu_is_queued_for_review_not_guessed():
     result = extract("PC gamer 32g 1to carte graphique puissante")
     assert "cpu" not in result["fields"]
     assert "Processeur non identifié" in result["questions"]
+
+
+def test_variants_and_confidence_are_parsed_without_ai():
+    result = extract("PC AMD Ryzen 7-7800 X3D GeForce RTX5070Ti 32GB DDR5 M.2 1TB")
+    fields = result["fields"]
+    assert fields["cpu"]["value"] == "Ryzen 7800X3D"
+    assert fields["platform"]["value"] == "AM5"
+    assert fields["gpu"]["value"] == "RTX 5070 Ti"
+    assert fields["ram_gb"]["value"] == 32
+    assert fields["ram_type"]["value"] == "DDR5"
+    assert fields["storage"]["value"][0]["type"] == "NVME"
+    assert fields["cpu"]["confidence"] >= 0.9
+    assert fields["gpu"]["confidence"] >= 0.9
+
+
+def test_vram_is_not_mistaken_for_system_ram():
+    result = extract("PC Ryzen 5 7600 RTX 4070 12GB VRAM SSD 1TB")
+    assert result["fields"]["gpu"]["value"] == "RTX 4070"
+    assert "ram_gb" not in result["fields"]
+
+
+def test_plain_ram_with_ddr_context_is_recognised():
+    result = extract("Ryzen 5 7600 RTX 4070 32GB DDR5 1TB")
+    assert result["fields"]["ram_gb"]["value"] == 32
+    assert result["fields"]["ram_gb"]["confidence"] >= 0.8
+
+
+def test_low_confidence_field_is_flagged_for_review():
+    result = extract("Ryzen 5 7600 RTX 4070 32GB 1TB")
+    assert result["fields"]["ram_gb"]["value"] == 32
+    assert "Confirmer la capacité de RAM" in result["questions"] or "Confirmer ram_gb" in result["questions"]
