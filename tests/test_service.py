@@ -164,3 +164,24 @@ def test_sudden_empty_scan_does_not_erase_state(tmp_path: Path):
     assert automation.run().status == RunStatus.SUCCESS
     assert automation.run().status == RunStatus.SITE_FAILURE
     assert len(repo.known_ids("cashconverters", [str(i) for i in range(20)])) == 20
+
+
+def test_scan_activity_tracks_additions_and_removals_even_when_total_is_stable(tmp_path: Path):
+    repo = SQLiteRepository(tmp_path / "state.db")
+    repo.migrate()
+    first_batch = [listing(str(i)) for i in range(1, 5)]
+    second_batch = [listing("1"), listing("2"), listing("5"), listing("6")]
+    automation = CashConvertersAutomation(
+        repo, FakeScraper([first_batch, second_batch]), FakeNotifier(), config()
+    )
+
+    assert automation.run().status == RunStatus.SUCCESS
+    assert automation.run().status == RunStatus.SUCCESS
+
+    activity = repo.scan_activity("cashconverters")
+    assert len(activity) == 2
+    assert activity[0]["added_count"] == 0
+    assert activity[0]["removed_count"] == 0
+    assert activity[1]["total_count"] == 4
+    assert activity[1]["added_count"] == 2
+    assert activity[1]["removed_count"] == 2
