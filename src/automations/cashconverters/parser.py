@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.parse
 from datetime import UTC, datetime
-from urllib.parse import urljoin, urlparse
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
@@ -33,16 +33,16 @@ def _image_url(node, product_url: str) -> str | None:
     for attr in ("data-full-size-image-url", "data-src", "data-lazy-src"):
         value = node.get(attr)
         if isinstance(value, str) and value.strip():
-            return urljoin(product_url, value.strip())
+            return urllib.parse.urljoin(product_url, value.strip())
     for attr in ("data-srcset", "srcset"):
         value = node.get(attr)
         if isinstance(value, str) and value.strip():
             candidates = [part.strip().split()[0] for part in value.split(",") if part.strip()]
             if candidates:
-                return urljoin(product_url, candidates[-1])
+                return urllib.parse.urljoin(product_url, candidates[-1])
     value = node.get("src")
     if isinstance(value, str) and value.strip() and not value.strip().startswith("data:"):
-        return urljoin(product_url, value.strip())
+        return urllib.parse.urljoin(product_url, value.strip())
     return None
 
 
@@ -71,8 +71,8 @@ def parse_catalog(html: str, feed_name: str) -> list[Listing]:
         title_node = card.select_one(".product-title a")
         if not external_id or link is None or title_node is None:
             raise ParserFailure(f"Required product fields missing in {feed_name}")
-        url = urljoin(CASHCONVERTERS_BASE, str(link.get("href")).strip())
-        path_parts = [part for part in urlparse(url).path.split("/") if part]
+        url = urllib.parse.urljoin(CASHCONVERTERS_BASE, str(link.get("href")).strip())
+        path_parts = [part for part in urllib.parse.urlparse(url).path.split("/") if part]
         category = path_parts[-2] if len(path_parts) >= 2 else None
         price_node = card.select_one(".price")
         store_node = card.select_one(".magasin")
