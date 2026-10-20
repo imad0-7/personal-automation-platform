@@ -15,7 +15,7 @@ def test_dashboard_escapes_remote_content(tmp_path):
     assert 'Vue d’ensemble' in page
     assert 'À clarifier' in page
     assert 'Nouveautés aujourd’hui' in page
-    assert 'Heures d’ajout' in page
+    assert 'Activité du catalogue' in page
     assert 'Dernière nouveauté détectée' in page
 
 
@@ -93,3 +93,22 @@ def test_dashboard_offers_have_independent_filters(tmp_path):
     assert 'id="offer-availability"' in page
     assert 'id="offer-platform"' in page
     assert "setupFilters('#offers-grid'" in page
+
+
+def test_dashboard_activity_view_uses_scan_activity(tmp_path):
+    from datetime import UTC, datetime
+
+    repo = SQLiteRepository(tmp_path / 'state.db')
+    repo.migrate()
+    repo.record_scan_activity(
+        1, 'cashconverters', datetime(2026, 10, 20, 18, 15, tzinfo=UTC),
+        356, {'new-a', 'new-b'}, {'old-a'},
+    )
+    page = build_html(repo)
+    assert 'Activité du catalogue' in page
+    assert 'Heatmap jour × heure' in page
+    assert '"added":2' in page
+    assert '"removed":1' in page
+    assert '15 min' in page
+    assert '30 min' in page
+    assert '60 min' in page
