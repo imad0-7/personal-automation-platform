@@ -113,7 +113,10 @@ class CashConvertersAutomation:
                 if new:
                     listing.attributes['discovered_at'] = now.isoformat()
                 old_questions = listing.attributes.get('hardware', {}).get('questions', [])
-                clarification_checked = listing.attributes.get('clarification_checked_at')
+                clarification_checked = (
+                    listing.attributes.get('clarification_checked_at')
+                    or listing.attributes.get('detail_checked_at')
+                )
                 clarification_due = False
                 if old_questions and listing.attributes.get('detail_checked'):
                     if not clarification_checked:
@@ -135,6 +138,7 @@ class CashConvertersAutomation:
                     try:
                         self.scraper.enrich(listing)
                         listing.attributes['detail_checked'] = True
+                        listing.attributes['detail_checked_at'] = now.isoformat()
                         if clarification_due:
                             listing.attributes['clarification_checked_at'] = now.isoformat()
                         fresh = True
