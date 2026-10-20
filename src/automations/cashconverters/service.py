@@ -75,6 +75,7 @@ class CashConvertersAutomation:
             price_snapshot = repo.state(STATE, 'price_snapshot', {})
             price_scan = now.timestamp() - last_price >= 7200
             known = set(repo.state(STATE, 'known_catalog', []))
+            previous_active = set(repo.state(STATE, 'active_catalog', []))
             if isinstance(self.scraper, CashConvertersScraper):
                 # The reservation button is present on catalogue cards. Reading every
                 # catalogue page keeps availability current without fetching 343 details.
@@ -92,6 +93,8 @@ class CashConvertersAutomation:
             budget = self.config.detail_requests_limit
             deferred = repo.state(STATE, 'detail_pending', [])
             ids = {x.external_id for x in listings}
+            added_ids = ids - previous_active if previous_active and not baseline else set()
+            removed_ids = previous_active - ids if previous_active and not baseline else set()
             for ident in deferred:
                 old = repo.get_listing('cashconverters', ident)
                 if old and ident not in ids:
@@ -163,6 +166,10 @@ class CashConvertersAutomation:
                 self._chunks('review:' + day, 'QUESTIONS MATÉRIEL', lines)
                 repo.set_state(self.namespace, 'review_day', day)
             repo.save_listings(listings)
+            repo.record_scan_activity(
+                run_id, AUTOMATION_NAME, now, len(ids), added_ids, removed_ids,
+            )
+            repo.set_state(STATE, 'active_catalog', sorted(ids))
             repo.set_state(self.namespace, 'review', review)
             repo.set_state(STATE, 'detail_pending', next_deferred)
             repo.set_state(STATE, 'known_catalog', sorted(known))
