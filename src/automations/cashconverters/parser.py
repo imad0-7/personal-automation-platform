@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC, datetime
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
@@ -22,6 +22,25 @@ def _price_to_cents(text: str) -> int | None:
         return round(float(value) * 100)
     except ValueError:
         return None
+
+
+def _image_url(node, product_url: str) -> str | None:
+    if node is None:
+        return None
+    for attr in ("data-full-size-image-url", "data-src", "data-lazy-src"):
+        value = node.get(attr)
+        if isinstance(value, str) and value.strip():
+            return urljoin(product_url, value.strip())
+    for attr in ("data-srcset", "srcset"):
+        value = node.get(attr)
+        if isinstance(value, str) and value.strip():
+            candidates = [part.strip().split()[0] for part in value.split(",") if part.strip()]
+            if candidates:
+                return urljoin(product_url, candidates[-1])
+    value = node.get("src")
+    if isinstance(value, str) and value.strip() and not value.strip().startswith("data:"):
+        return urljoin(product_url, value.strip())
+    return None
 
 
 def parse_catalog(html: str, feed_name: str) -> list[Listing]:
@@ -54,7 +73,10 @@ def parse_catalog(html: str, feed_name: str) -> list[Listing]:
         category = path_parts[-2] if len(path_parts) >= 2 else None
         price_node = card.select_one(".price")
         store_node = card.select_one(".magasin")
-        image_node = card.select_one("img[src]")
+        image_node = card.select_one(
+            "img[data-full-size-image-url], img[data-src], img[data-lazy-src], "
+            "img[data-srcset], img[srcset], img[src]"
+        )
         reserve_control = card.select_one('button[data-button-action="add-to-cart"]')
         reservable = (
             not (reserve_control.has_attr('disabled')
@@ -75,7 +97,7 @@ def parse_catalog(html: str, feed_name: str) -> list[Listing]:
                 "reservable": reservable,
                 "reservation_checked_at": datetime.now(UTC).isoformat(),
             },
-            image_url=str(image_node.get("data-full-size-image-url") or image_node.get("src")) if image_node else None,
+            image_url=_image_url(image_node, url),
             is_new_badge="nouveau" in flags,
         ))
     return listings
