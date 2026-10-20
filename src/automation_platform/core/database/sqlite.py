@@ -63,6 +63,27 @@ CREATE TABLE IF NOT EXISTS price_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT NOT NULL,
     external_id TEXT NOT NULL, price_cents INTEGER NOT NULL, observed_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS scan_activity (
+    run_id INTEGER PRIMARY KEY,
+    automation TEXT NOT NULL,
+    observed_at TEXT NOT NULL,
+    total_count INTEGER NOT NULL,
+    added_count INTEGER NOT NULL DEFAULT 0,
+    removed_count INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_scan_activity_automation_time
+    ON scan_activity(automation, observed_at);
+CREATE TABLE IF NOT EXISTS listing_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    observed_at TEXT NOT NULL,
+    UNIQUE(run_id, source, external_id, event_type)
+);
+CREATE INDEX IF NOT EXISTS idx_listing_events_source_time
+    ON listing_events(source, observed_at);
 """
 
 
@@ -270,6 +291,40 @@ class SQLiteRepository:
             WHERE h.old_price IS NOT NULL AND h.old_price != h.price_cents
             ORDER BY h.id DESC LIMIT ?''',
             (source, source, limit),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def record_scan_activity(
+        self, run_id: int, automation: str, observed_at: datetime, total_count: int,
+        added_ids: set[str], removed_ids: set[str], source: str = "cashconverters",
+    ) -> None:
+        when = observed_at.isoformat()
+        self.connection.execute(
+            """INSERT OR REPLACE INTO scan_activity(
+                   run_id, automation, observed_at, total_count, added_count, removed_count
+               ) VALUES (?, ?, ?, ?, ?, ?)""",
+            (run_id, automation, when, total_count, len(added_ids), len(removed_ids)),
+        )
+        rows = [
+            (run_id, source, ident, "added", when) for ident in sorted(added_ids)
+        ] + [
+            (run_id, source, ident, "removed", when) for ident in sorted(removed_ids)
+        ]
+        if rows:
+            self.connection.executemany(
+                """INSERT OR IGNORE INTO listing_events(
+                       run_id, source, external_id, event_type, observed_at
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                rows,
+            )
+        self.connection.commit()
+
+    def scan_activity(self, automation: str, limit: int = 10000) -> list[dict]:
+        rows = self.connection.execute(
+            """SELECT run_id, observed_at, total_count, added_count, removed_count
+               FROM scan_activity WHERE automation=?
+               ORDER BY observed_at ASC LIMIT ?""",
+            (automation, limit),
         ).fetchall()
         return [dict(row) for row in rows]
 
