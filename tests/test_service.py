@@ -185,3 +185,42 @@ def test_scan_activity_tracks_additions_and_removals_even_when_total_is_stable(t
     assert activity[1]["total_count"] == 4
     assert activity[1]["added_count"] == 2
     assert activity[1]["removed_count"] == 2
+
+
+def test_unresolved_detail_is_retried_without_manual_input(tmp_path: Path):
+    class ClarifyingScraper(FakeScraper):
+        def __init__(self, batches):
+            super().__init__(batches)
+            self.enrich_calls = 0
+
+        def enrich(self, item):
+            self.enrich_calls += 1
+            if self.enrich_calls >= 2:
+                item.attributes["description"] = "Ryzen 5 7600 RTX 4070 RAM 32GB SSD 1TB"
+            return item
+
+    repo = SQLiteRepository(tmp_path / "state.db")
+    repo.migrate()
+    notifier = FakeNotifier()
+    scraper = ClarifyingScraper([
+        [listing("1", "PC gamer")],
+        [listing("1", "PC gamer")],
+        [listing("1", "PC gamer")],
+    ])
+    automation = CashConvertersAutomation(repo, scraper, notifier, config())
+
+    automation.run()  # baseline
+    automation.run()  # first detail enrichment, still unclear
+
+    stored = repo.get_listing("cashconverters", "1")
+    assert stored is not None
+    stored.attributes["detail_checked_at"] = "2020-01-01T00:00:00+00:00"
+    repo.save_listings([stored])
+
+    automation.run()  # automatic clarification retry
+    clarified = repo.get_listing("cashconverters", "1")
+    assert clarified is not None
+    fields = clarified.attributes["hardware"]["fields"]
+    assert fields["cpu"]["value"] == "Ryzen 7600"
+    assert fields["gpu"]["value"] == "RTX 4070"
+    assert fields["ram_gb"]["value"] == 32
