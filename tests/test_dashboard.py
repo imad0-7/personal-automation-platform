@@ -112,3 +112,19 @@ def test_dashboard_activity_view_uses_scan_activity(tmp_path):
     assert '15 min' in page
     assert '30 min' in page
     assert '60 min' in page
+
+
+def test_dashboard_month_thirds_activity_trend(tmp_path):
+    from datetime import UTC, datetime
+
+    repo = SQLiteRepository(tmp_path / 'state.db')
+    repo.migrate()
+    repo.record_scan_activity(1, 'cashconverters', datetime(2026, 10, 5, 12, 0, tzinfo=UTC), 350, {'a'}, set())
+    repo.record_scan_activity(2, 'cashconverters', datetime(2026, 10, 15, 12, 0, tzinfo=UTC), 351, {'b', 'c'}, {'x'})
+    repo.record_scan_activity(3, 'cashconverters', datetime(2026, 10, 25, 12, 0, tzinfo=UTC), 352, {'d'}, {'y', 'z'})
+    page = build_html(repo)
+    assert 'Tendance dans le mois' in page
+    assert '1er tiers' in page
+    assert '2e tiers' in page
+    assert '3e tiers' in page
+    assert 'changements / jour observé' in page
