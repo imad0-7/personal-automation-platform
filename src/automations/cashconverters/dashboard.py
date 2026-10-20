@@ -173,8 +173,9 @@ h3{{font-size:15px;line-height:1.4;min-height:42px}}.price{{font-size:25px;font-
  <div class="section-head" style="margin-top:24px"><h2>Les six derniers PC</h2></div>
  <div class="grid">{''.join(cards[x.external_id] for x in listings[:6])}</div>
 </section>
-<section class="view" id="offers"><div class="section-head"><div><h2>Offres à examiner</h2><div class="muted">Règles AM4/AM5 actuellement configurées</div></div></div>
- <div class="grid filter-grid">{''.join(cards[x.external_id] for x in offers) or '<p class="empty">Aucune offre détectée parmi les 100 derniers.</p>'}</div></section>
+<section class="view" id="offers"><div class="section-head"><div><h2>Offres à examiner</h2><div class="muted">Règles AM4/AM5 actuellement configurées · <span id="offer-count">{len(offers)}</span> affichée(s)</div></div>
+ <div class="filters"><input id="offer-search" placeholder="Rechercher CPU, GPU, magasin…"><select id="offer-availability"><option value="">Toutes disponibilités</option><option value="available">Réservables</option><option value="unavailable">Non réservables</option><option value="unknown">À vérifier</option></select><select id="offer-platform"><option value="">Toutes plateformes</option><option value="AM4">AM4</option><option value="AM5">AM5</option><option value="Inconnu">Inconnu</option></select></div></div>
+ <div class="grid filter-grid" id="offers-grid">{''.join(cards[x.external_id] for x in offers) or '<p class="empty">Aucune offre détectée parmi les 100 derniers.</p>'}</div></section>
 <section class="view" id="today"><div class="section-head"><div><h2>Nouveautés aujourd’hui</h2><div class="muted">Nouveaux ordinateurs réellement découverts aujourd’hui, hors catalogue initial</div></div></div>
  <div class="grid">{discovery_cards or '<p class="empty">Aucun nouvel ordinateur détecté aujourd’hui.</p>'}</div></section>
 <section class="view" id="latest"><div class="section-head"><div><h2>100 derniers ordinateurs</h2><div class="muted">#1 correspond au premier produit du site</div></div>
@@ -191,7 +192,21 @@ h3{{font-size:15px;line-height:1.4;min-height:42px}}.price{{font-size:25px;font-
 const tabs=[...document.querySelectorAll('.tab')],views=[...document.querySelectorAll('.view')];
 function openTab(id){{tabs.forEach(x=>x.classList.toggle('active',x.dataset.tab===id));views.forEach(x=>x.classList.toggle('active',x.id===id));history.replaceState(null,'','#'+id)}}
 tabs.forEach(x=>x.addEventListener('click',()=>openTab(x.dataset.tab)));if(location.hash)openTab(location.hash.slice(1));
-const search=document.querySelector('#search'),availability=document.querySelector('#availability');
-function filter(){{const q=search.value.toLocaleLowerCase();document.querySelectorAll('#latest-grid .product').forEach(x=>{{x.hidden=!x.dataset.search.includes(q)||(availability.value&&x.dataset.availability!==availability.value)}})}}
-search.addEventListener('input',filter);availability.addEventListener('change',filter);
+function setupFilters(gridSelector, searchSelector, availabilitySelector, platformSelector=null, countSelector=null){{
+  const grid=document.querySelector(gridSelector),search=document.querySelector(searchSelector),availability=document.querySelector(availabilitySelector);
+  const platform=platformSelector?document.querySelector(platformSelector):null,count=countSelector?document.querySelector(countSelector):null;
+  if(!grid||!search||!availability)return;
+  function apply(){{
+    const q=search.value.toLocaleLowerCase(),availabilityValue=availability.value,platformValue=platform?platform.value:'';
+    let visible=0;
+    grid.querySelectorAll('.product').forEach(x=>{{
+      const show=x.dataset.search.includes(q)&&(!availabilityValue||x.dataset.availability===availabilityValue)&&(!platformValue||x.dataset.platform===platformValue);
+      x.hidden=!show;if(show)visible+=1;
+    }});
+    if(count)count.textContent=visible;
+  }}
+  search.addEventListener('input',apply);availability.addEventListener('change',apply);if(platform)platform.addEventListener('change',apply);apply();
+}}
+setupFilters('#latest-grid','#search','#availability');
+setupFilters('#offers-grid','#offer-search','#offer-availability','#offer-platform','#offer-count');
 </script></body></html>'''
