@@ -11,6 +11,9 @@ from bs4 import BeautifulSoup
 from automation_platform.core.models import Listing
 
 
+CASHCONVERTERS_BASE = "https://www.cashconverters.be"
+
+
 class ParserFailure(RuntimeError):
     pass
 
@@ -68,7 +71,7 @@ def parse_catalog(html: str, feed_name: str) -> list[Listing]:
         title_node = card.select_one(".product-title a")
         if not external_id or link is None or title_node is None:
             raise ParserFailure(f"Required product fields missing in {feed_name}")
-        url = str(link.get("href"))
+        url = urljoin(CASHCONVERTERS_BASE, str(link.get("href")).strip())
         path_parts = [part for part in urlparse(url).path.split("/") if part]
         category = path_parts[-2] if len(path_parts) >= 2 else None
         price_node = card.select_one(".price")
