@@ -268,6 +268,14 @@ class SQLiteRepository:
         )
         self.connection.commit()
 
+    def cancel_obsolete_alerts(self, automation: str) -> None:
+        self.connection.execute(
+            "UPDATE notification_outbox SET status='superseded' WHERE automation=? "
+            "AND status='pending' AND json_extract(payload_json, '$.title') IN (?, ?)",
+            (automation, 'QUESTIONS MATÉRIEL', 'CONTRÔLE PARTIEL'),
+        )
+        self.connection.commit()
+
     def recent_listings(self, source: str, limit: int = 100) -> list[Listing]:
         rows = self.connection.execute(
             'SELECT external_id FROM listings WHERE source=? '

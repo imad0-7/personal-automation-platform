@@ -52,6 +52,9 @@ def _card(listing, detected_at: datetime | None = None) -> str:
              if listing.image_url else '<div class="no-image">PC</div>')
     search = ' '.join([listing.title, platform, cpu, gpu, listing.store or '']).casefold()
     reason = f'<p class="reason">{_e(" · ".join(reasons))}</p>' if reasons else ''
+    checked = listing.attributes.get('reservation_checked_at')
+    reservation_time = (f'<p class="detected">Réservation vérifiée : '
+                        f'{_e(_format_scan_time(checked))}</p>' if checked else '')
     detected = ''
     if detected_at is not None:
         local = detected_at.astimezone(BRUSSELS)
@@ -64,7 +67,7 @@ def _card(listing, detected_at: datetime | None = None) -> str:
         <span class="badge {availability_key}">{_e(availability)}</span>
       </div><h3>{_e(listing.title)}</h3><div class="price">{price}</div>
       <p class="specs">{_e(platform)} · {_e(cpu)} · {_e(gpu)} · {_e(ram)}</p>
-      <p class="store">{_e(listing.store or 'Magasin inconnu')}</p>{detected}{reason}
+      <p class="store">{_e(listing.store or 'Magasin inconnu')}</p>{reservation_time}{detected}{reason}
       <a class="action" href="{_e(listing.url)}" target="_blank" rel="noopener">Voir l’annonce ↗</a>
       </div></article>'''
 

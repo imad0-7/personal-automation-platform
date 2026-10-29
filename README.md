@@ -172,3 +172,15 @@ LiteLLM ou LangGraph ne sont pas installés tant qu'ils n'apportent aucune valeu
 
 Le code métier dépend de `ListingRepository`, pas de `sqlite3`. La migration consistera à ajouter
 un adaptateur PostgreSQL et à changer `AUTOMATION_DB_URL`, sans réécrire les automatisations.
+
+## Fiabilité et coût des scans
+
+Les nouveautés sont recherchées par scans légers. Le prix et la réservation des
+100 dernières annonces sont contrôlés toutes les deux heures ; un recensement complet
+quotidien conserve le suivi des disparitions. Les limites sont configurables dans
+`src/automations/cashconverters/config.yaml`.
+
+Les fiches lentes sont réessayées avec un délai progressif. Une erreur isolée ne génère
+plus « Contrôle partiel » et les ambiguïtés ne demandent plus de correction Telegram.
+Voir [le diagnostic et la politique des sources](docs/reliability-and-sources.md),
+notamment les conditions à résoudre avant d'activer une collecte 2ememain.

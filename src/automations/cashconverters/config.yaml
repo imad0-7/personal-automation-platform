@@ -1,7 +1,10 @@
 scan:
   interval_minutes: 15
   pages_per_source: 2
-  detail_requests_limit: 20
+  detail_requests_limit: 5
+  tracked_items_limit: 100
+  refresh_minutes: 120
+  full_scan_minutes: 1440
   minimum_products: 10
   sudden_drop_ratio: 0.25
 

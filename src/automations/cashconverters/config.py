@@ -21,6 +21,9 @@ class CashConvertersConfig:
     minimum_products: int
     sudden_drop_ratio: float
     sources: tuple[Feed, ...]
+    tracked_items_limit: int = 100
+    refresh_minutes: int = 120
+    full_scan_minutes: int = 1440
 
     @classmethod
     def load(cls, path: Path | None = None) -> CashConvertersConfig:
@@ -34,4 +37,7 @@ class CashConvertersConfig:
             minimum_products=int(scan["minimum_products"]),
             sudden_drop_ratio=float(scan["sudden_drop_ratio"]),
             sources=tuple(Feed(str(x["name"]), str(x["url"])) for x in raw["sources"]),
+            tracked_items_limit=int(scan.get('tracked_items_limit', 100)),
+            refresh_minutes=int(scan.get('refresh_minutes', 120)),
+            full_scan_minutes=int(scan.get('full_scan_minutes', 1440)),
         )

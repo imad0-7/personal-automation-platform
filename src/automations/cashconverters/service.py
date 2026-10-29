@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import html
 import logging
-from zoneinfo import ZoneInfo
+from copy import deepcopy
 
 import httpx
 
@@ -16,7 +16,7 @@ from .scraper import CashConvertersScraper
 
 AUTOMATION_NAME = 'cashconverters'
 STATE = 'cashconverters-v2'
-CLARIFICATION_RETRY_SECONDS = 24 * 60 * 60
+CLARIFICATION_RETRY_SECONDS = 7 * 24 * 60 * 60
 
 
 class SuspiciousScan(RuntimeError):
@@ -65,6 +65,7 @@ class CashConvertersAutomation:
         run_id = repo.begin_run(AUTOMATION_NAME)
         now = summary.started_at
         bucket = str(int(now.timestamp()) // 900)
+        repo.cancel_obsolete_alerts(AUTOMATION_NAME)
         try:
             try:
                 poll_commands(repo, self.notifier, self.namespace)
@@ -74,13 +75,15 @@ class CashConvertersAutomation:
             baseline = not repo.state(STATE, 'baseline', False)
             last_price = repo.state(STATE, 'last_price_scan', 0)
             price_snapshot = repo.state(STATE, 'price_snapshot', {})
-            price_scan = now.timestamp() - last_price >= 7200
+            price_scan = now.timestamp() - last_price >= self.config.refresh_minutes * 60
+            full_scan = baseline or (
+                now.timestamp() - repo.state(STATE, 'last_full_scan', 0)
+                >= self.config.full_scan_minutes * 60
+            )
             known = set(repo.state(STATE, 'known_catalog', []))
             previous_active = set(repo.state(STATE, 'active_catalog', []))
             if isinstance(self.scraper, CashConvertersScraper):
-                # The reservation button is present on catalogue cards. Reading every
-                # catalogue page keeps availability current without fetching 343 details.
-                listings = self.scraper.collect(full=True,
+                listings = self.scraper.collect(full=full_scan,
                                                 price_scan=price_scan, known_ids=known)
             else:
                 listings = self.scraper.collect()
@@ -95,7 +98,8 @@ class CashConvertersAutomation:
             deferred = repo.state(STATE, 'detail_pending', [])
             ids = {x.external_id for x in listings}
             added_ids = ids - previous_active if previous_active and not baseline else set()
-            removed_ids = previous_active - ids if previous_active and not baseline else set()
+            removed_ids = (previous_active - ids
+                           if previous_active and not baseline and full_scan else set())
             for ident in deferred:
                 old = repo.get_listing('cashconverters', ident)
                 if old and ident not in ids:
@@ -105,7 +109,8 @@ class CashConvertersAutomation:
                 old = repo.get_listing(listing.source, listing.external_id)
                 old_price = price_snapshot.get(listing.external_id, old.price_cents if old else None)
                 new = not baseline and listing.external_id not in known and listing.external_id not in deferred
-                changed = (not baseline and price_scan and index < 100 and old is not None
+                tracked = index < self.config.tracked_items_limit and listing.external_id in ids
+                changed = (not baseline and price_scan and tracked and old is not None
                            and old_price is not None and listing.price_cents is not None
                            and old_price != listing.price_cents)
                 if old:
@@ -131,19 +136,37 @@ class CashConvertersAutomation:
                         except (TypeError, ValueError):
                             clarification_due = True
                 needs_detail = new or changed or listing.external_id in deferred or clarification_due or (
-                    not baseline and index < 100 and not listing.attributes.get('detail_checked'))
+                    not baseline and tracked and not listing.attributes.get('detail_checked'))
+                retry_after = listing.attributes.get('detail_retry_after', 0)
+                needs_detail = needs_detail and now.timestamp() >= retry_after
                 fresh = False
                 if needs_detail and budget > 0:
                     budget -= 1
                     try:
-                        self.scraper.enrich(listing)
+                        # Work on a copy: a failed detail parse cannot damage catalogue data.
+                        enriched = deepcopy(listing)
+                        self.scraper.enrich(enriched)
+                        listing = enriched
+                        listings[index] = listing
                         listing.attributes['detail_checked'] = True
                         listing.attributes['detail_checked_at'] = now.isoformat()
+                        listing.attributes['detail_failures'] = 0
+                        listing.attributes['detail_retry_after'] = 0
+                        listing.attributes.pop('detail_error_since', None)
                         if clarification_due:
                             listing.attributes['clarification_checked_at'] = now.isoformat()
                         fresh = True
                     except (ParserFailure, httpx.HTTPError) as exc:
                         summary.errors.append('detail ' + listing.external_id + ': ' + type(exc).__name__)
+                        failures = listing.attributes.get('detail_failures', 0) + 1
+                        listing.attributes['detail_failures'] = failures
+                        listing.attributes.setdefault('detail_error_since', now.timestamp())
+                        delay = min(86400, 1800 * 2 ** min(failures - 1, 6))
+                        listing.attributes['detail_retry_after'] = now.timestamp() + delay
+                if old and not (price_scan and tracked):
+                    for field in ('reservable', 'reservation_checked_at'):
+                        if field in old.attributes:
+                            listing.attributes[field] = old.attributes[field]
                 if (new or listing.external_id in deferred) and not fresh:
                     next_deferred.append(listing.external_id)
                 correction = repo.state(self.namespace, 'correction:' + listing.external_id, {})
@@ -171,29 +194,24 @@ class CashConvertersAutomation:
                 else:
                     review.pop(listing.external_id, None)
                 known.add(listing.external_id)
-                if index < 100 and (baseline or price_scan or new):
+                if tracked and (baseline or price_scan or new):
                     price_snapshot[listing.external_id] = listing.price_cents
             if not baseline and prefs['mode'] != 'pause' and (ordinary or price_lines or prefs['reports']):
                 self._chunks('report:' + str(run_id), 'COMPTE RENDU CASH CONVERTERS', [
                     f'{summary.observed} PC contrôlés · {summary.discovered} nouveaux',
                     *ordinary, *price_lines, 'Aucune nouveauté.' if not summary.discovered else '',
                 ])
-            local = now.astimezone(ZoneInfo('Europe/Brussels'))
-            day = local.date().isoformat()
-            if (local.hour >= 12 and review and prefs['mode'] != 'pause'
-                    and repo.state(self.namespace, 'review_day') != day):
-                lines = ['À clarifier (maximum 5 cas) :']
-                for ident, case in list(review.items())[:5]:
-                    lines.append(html.escape(f"ID {ident} — {case['title']}\n"
-                                             + ', '.join(case['questions']) + '\n' + case['url']))
-                lines.append('/corriger ID ram_gb=32 ram_type=DDR5 (annonce uniquement)')
-                self._chunks('review:' + day, 'QUESTIONS MATÉRIEL', lines)
-                repo.set_state(self.namespace, 'review_day', day)
+            # Ambiguities remain in the dashboard; they never solicit manual input.
             repo.save_listings(listings)
+            total = max([x.attributes.get('catalog_total') or 0 for x in listings] or [0])
             repo.record_scan_activity(
-                run_id, AUTOMATION_NAME, now, len(ids), added_ids, removed_ids,
+                run_id, AUTOMATION_NAME, now, total or len(ids), added_ids, removed_ids,
             )
-            repo.set_state(STATE, 'active_catalog', sorted(ids))
+            repo.set_state(STATE, 'active_catalog', sorted(
+                ids if full_scan else previous_active | ids
+            ))
+            if full_scan:
+                repo.set_state(STATE, 'last_full_scan', now.timestamp())
             repo.set_state(self.namespace, 'review', review)
             repo.set_state(STATE, 'detail_pending', next_deferred)
             repo.set_state(STATE, 'known_catalog', sorted(known))
@@ -207,23 +225,39 @@ class CashConvertersAutomation:
             repo.set_state(STATE, 'ranking_initialized', True)
             incident = repo.state(STATE, 'incident')
             if incident:
-                self._queue('recovery:' + incident['id'], Notification(
-                    title='SITE RÉTABLI', message='Le catalogue Cash Converters est de nouveau lisible.'))
+                if incident.get('notified', True):
+                    self._queue('recovery:' + incident['id'], Notification(
+                        title='SITE RÉTABLI', message='La détection des nouvelles annonces a repris.'))
                 repo.set_state(STATE, 'incident', None)
-            if summary.errors:
-                self._queue('partial:' + bucket, Notification(title='CONTRÔLE PARTIEL',
-                    message='Certaines fiches ou commandes n’ont pas pu être lues. Voir GitHub Actions.'))
+            persistent = [x for x in listings if x.attributes.get('detail_failures', 0) >= 2
+                          and now.timestamp() - x.attributes.get('detail_error_since', now.timestamp()) >= 3600]
+            last_warning = repo.state(STATE, 'last_detail_warning', 0)
+            if len(persistent) >= 3 and now.timestamp() - last_warning >= 86400:
+                self._queue('details:' + str(run_id), Notification(
+                    title='ANALYSE DE FICHES DÉGRADÉE',
+                    message=f'Les nouvelles annonces sont toujours détectées. {len(persistent)} fiches '
+                            'restent illisibles après plusieurs tentatives. Caractéristiques '
+                            'incomplètes ; nouvelles tentatives automatiques prévues.'))
+                repo.set_state(STATE, 'last_detail_warning', now.timestamp())
             summary.status = RunStatus.SUCCESS
         except (ParserFailure, httpx.HTTPError, SuspiciousScan) as exc:
             summary.status = RunStatus.PARSER_FAILURE if isinstance(exc, ParserFailure) else RunStatus.SITE_FAILURE
             summary.errors.append(type(exc).__name__)
-            incident = repo.state(STATE, 'incident') or {'id': str(run_id)}
+            incident = repo.state(STATE, 'incident') or {
+                'id': str(run_id), 'failures': 0, 'notified': False,
+            }
+            incident['failures'] = incident.get('failures', 1) + 1
+            should_notify = incident['failures'] >= 2 and not incident.get('notified', False)
+            if should_notify:
+                incident['notified'] = True
             repo.set_state(STATE, 'incident', incident)
-            self._queue('incident:' + incident['id'], Notification(
-                title='ALERTE TECHNIQUE CASH CONVERTERS', priority=Priority.URGENT,
-                message=f'{summary.status.value} : site inaccessible ou catalogue illisible. '
-                        'État précédent conservé. Vérifier les journaux GitHub Actions.',
-                url='https://github.com/imad0-7/personal-automation-platform/actions'))
+            if should_notify:
+                self._queue('incident:' + incident['id'], Notification(
+                    title='ALERTE TECHNIQUE CASH CONVERTERS', priority=Priority.URGENT,
+                    message=f'{summary.status.value} : deux contrôles consécutifs du catalogue '
+                            'ont échoué. Les nouveautés ne peuvent plus être vérifiées. '
+                            'Dernières données conservées ; nouvelle tentative au prochain scan.',
+                    url='https://github.com/imad0-7/personal-automation-platform/actions'))
         except Exception as exc:  # noqa: BLE001 - automation boundary records unexpected failures
             summary.status = RunStatus.FAILED
             summary.errors.append(type(exc).__name__)

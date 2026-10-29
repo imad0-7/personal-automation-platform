@@ -10,7 +10,6 @@ from bs4 import BeautifulSoup
 
 from automation_platform.core.models import Listing
 
-
 CASHCONVERTERS_BASE = "https://www.cashconverters.be"
 
 

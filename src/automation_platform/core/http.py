@@ -34,20 +34,29 @@ class HttpClient:
             transport=transport,
         )
 
-    def get_text(self, url: str) -> str:
+    def get_text(self, url: str, *, timeout: float | None = None,
+                 attempts: int | None = None) -> str:
         last_error: Exception | None = None
-        for attempt in range(self.policy.retries):
+        retries = self.policy.retries if attempts is None else attempts
+        for attempt in range(retries):
             try:
                 self.requests_count += 1
-                response = self._client.get(url)
+                response = self._client.get(url, timeout=(
+                    self.policy.timeout_seconds if timeout is None else timeout
+                ))
                 response.raise_for_status()
                 return response.text
+            except httpx.HTTPStatusError as exc:
+                # Access restrictions and permanent errors must not be retried.
+                if exc.response.status_code < 500:
+                    raise
+                last_error = exc
             except (httpx.HTTPError, httpx.TimeoutException) as exc:
                 last_error = exc
-                log_event(self._logger, logging.WARNING, "http_retry", url=url, attempt=attempt + 1)
-                if attempt + 1 < self.policy.retries:
-                    delay = self.policy.backoff_seconds * (2**attempt) + random.uniform(0, 0.25)
-                    time.sleep(delay)
+            log_event(self._logger, logging.WARNING, "http_retry", url=url, attempt=attempt + 1)
+            if attempt + 1 < retries:
+                delay = self.policy.backoff_seconds * (2**attempt) + random.uniform(0, 0.25)
+                time.sleep(delay)
         assert last_error is not None
         raise last_error
 

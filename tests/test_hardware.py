@@ -47,7 +47,7 @@ def test_unknown_cpu_is_queued_for_review_not_guessed():
 def test_variants_and_confidence_are_parsed_without_ai():
     result = extract("PC AMD Ryzen 7-7800 X3D GeForce RTX5070Ti 32GB DDR5 M.2 1TB")
     fields = result["fields"]
-    assert fields["cpu"]["value"] == "Ryzen 7800X3D"
+    assert fields["cpu"]["value"] == "Ryzen 7 7800X3D"
     assert fields["platform"]["value"] == "AM5"
     assert fields["gpu"]["value"] == "RTX 5070 Ti"
     assert fields["ram_gb"]["value"] == 32
@@ -73,3 +73,11 @@ def test_low_confidence_field_is_flagged_for_review():
     result = extract("Ryzen 5 7600 RTX 4070 32GB 1TB")
     assert result["fields"]["ram_gb"]["value"] == 32
     assert "Confirmer la capacité de RAM" in result["questions"] or "Confirmer ram_gb" in result["questions"]
+
+
+def test_cpu_frequency_multiplier_is_never_ram():
+    for frequency in ('8x4,1GHz', '8x4.1GHz', '8x4GHz'):
+        parsed = extract(f'Ryzen 7 8700F {frequency} RTX 5060')
+        assert 'ram_gb' not in parsed['fields']
+    parsed = extract('Ryzen 7 8700F 8x4,1GHz RTX 5060 RAM 32GB')
+    assert parsed['fields']['ram_gb']['value'] == 32

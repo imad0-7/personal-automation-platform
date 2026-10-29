@@ -12,6 +12,8 @@ from automation_platform.core.models import Listing
 
 def _normalise(text: str) -> str:
     value = unicodedata.normalize('NFKC', text).upper().replace('×', 'X').replace('*', 'X')
+    value = re.sub(r'RYZEN\s*([3579])\s*[- ]\s*(\d{4,5})\s*(X3D|X|F|G)\b',
+                   r'RYZEN \1 \2\3', value)
     value = re.sub(r'(?<=\d)\s*[.-]\s*(?=\d)', '', value)
     value = re.sub(r'\bGE\s*FORCE\b', 'GEFORCE', value)
     value = re.sub(r'\bM[.]?2\b', 'M2', value)
@@ -113,12 +115,14 @@ def extract(text: str) -> dict:
                 break
     if 'gpu' not in fields:
         result['questions'].append('Carte graphique non identifiée')
-    for m in re.finditer(r'([1248])\s*X\s*(\d{1,3})\s*(?:GO|GB|G)(?![A-Z])', raw):
+    # CPU core-count/frequency notation is never a RAM multiplier (8x4,1 GHz).
+    ram_raw = re.sub(r'\b\d+\s*X\s*\d+(?:[.,]\d+)?\s*GHZ\b', ' ', raw)
+    for m in re.finditer(r'([1248])\s*X\s*(\d{1,3})\s*(?:GO|GB|G)(?![A-Z])', ram_raw):
         total = int(m[1]) * int(m[2])
         if total in {8, 16, 24, 32, 48, 64, 96, 128, 192, 256}:
             put('ram_gb', total, m[0], 'probable')
     if platform and 'ram_gb' not in fields:
-        for m in re.finditer(r'(?<!\d)([1248])\s*X\s*(\d{1,3})(?!\d)', raw):
+        for m in re.finditer(r'(?<!\d)([1248])\s*X\s*(\d{1,3})(?!\d)', ram_raw):
             if int(m[2]) in {4, 8, 16, 24, 32, 48, 64}:
                 put('ram_gb', int(m[1]) * int(m[2]), m[0], 'probable')
     for m in re.finditer(r'(?:RAM|MEMOIRE|MEMORY)\s*[:=-]?\s*(\d{1,3})\s*(?:GO|GB|G)\b', raw):
@@ -130,7 +134,8 @@ def extract(text: str) -> dict:
     if 'ram_gb' not in fields:
         for m in re.finditer(r'(?<!\d)(8|16|24|32|48|64)\s*(?:GO|GB)\b', raw):
             context = raw[max(0, m.start()-18):min(len(raw), m.end()+18)]
-            if not re.search(r'RTX|GTX|RADEON|\bRX\b|VRAM', context):
+            gpu_context = re.search(r'RTX|GTX|RADEON|\bRX\b', context)
+            if not re.search(r'VRAM|GDDR', context) and (not gpu_context or int(m[1]) >= 32):
                 put('ram_gb', int(m[1]), m[0], 'probable', 0.68)
                 break
     storage = []

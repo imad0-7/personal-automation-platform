@@ -47,7 +47,10 @@ class CashConvertersScraper:
             if full and count is None:
                 raise ParserFailure('Full baseline requires a verifiable catalogue total')
             total_pages = ceil(int(count) / len(first_items)) if count else 50
-            target = total_pages if full else (5 if price_scan else self.config.pages_per_source)
+            target = total_pages if full else (
+                ceil(self.config.tracked_items_limit / len(first_items))
+                if price_scan else self.config.pages_per_source
+            )
             target = min(target, total_pages)
             page = 1
             while page <= target:
@@ -85,4 +88,5 @@ class CashConvertersScraper:
         return list(by_id.values())
 
     def enrich(self, listing: Listing) -> Listing:
-        return enrich_from_detail(listing, self.http.get_text(listing.url))
+        # Details are optional. Retry them later instead of blocking catalogue discovery.
+        return enrich_from_detail(listing, self.http.get_text(listing.url, timeout=12, attempts=1))

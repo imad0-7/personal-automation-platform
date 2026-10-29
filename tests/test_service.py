@@ -96,7 +96,7 @@ def test_network_failure_preserves_previous_state(tmp_path: Path):
     automation = CashConvertersAutomation(repo, scraper, notifier, config())
     assert automation.run().status == RunStatus.SUCCESS
     assert automation.run().status == RunStatus.SITE_FAILURE
-    assert any(x.title == "ALERTE TECHNIQUE CASH CONVERTERS" for x in notifier.sent)
+    assert not any(x.title == "ALERTE TECHNIQUE CASH CONVERTERS" for x in notifier.sent)
     assert repo.known_ids("cashconverters", ["1"]) == {"1"}
 
 
@@ -104,8 +104,10 @@ def test_recovery_notification_after_site_failure(tmp_path: Path):
     repo = SQLiteRepository(tmp_path / "state.db")
     repo.migrate()
     notifier = FakeNotifier()
-    scraper = FakeScraper([[listing("1")], httpx.ConnectError("offline"), [listing("1")]])
+    scraper = FakeScraper([[listing("1")], httpx.ConnectError("offline"),
+                           httpx.ConnectError("offline"), [listing("1")]])
     automation = CashConvertersAutomation(repo, scraper, notifier, config())
+    automation.run()
     automation.run()
     automation.run()
     automation.run()
@@ -176,6 +178,7 @@ def test_scan_activity_tracks_additions_and_removals_even_when_total_is_stable(t
     )
 
     assert automation.run().status == RunStatus.SUCCESS
+    repo.set_state('cashconverters-v2', 'last_full_scan', 0)
     assert automation.run().status == RunStatus.SUCCESS
 
     activity = repo.scan_activity("cashconverters")
@@ -221,6 +224,73 @@ def test_unresolved_detail_is_retried_without_manual_input(tmp_path: Path):
     clarified = repo.get_listing("cashconverters", "1")
     assert clarified is not None
     fields = clarified.attributes["hardware"]["fields"]
-    assert fields["cpu"]["value"] == "Ryzen 7600"
+    assert fields["cpu"]["value"] == "Ryzen 5 7600"
     assert fields["gpu"]["value"] == "RTX 4070"
     assert fields["ram_gb"]["value"] == 32
+
+
+def test_optional_detail_timeout_is_silent_and_retried_later(tmp_path):
+    class FailingDetails(FakeScraper):
+        calls = 0
+
+        def enrich(self, item):
+            self.calls += 1
+            item.title = 'damaged'
+            raise httpx.ReadTimeout('slow detail')
+
+    repo = SQLiteRepository(tmp_path / 'state.db')
+    repo.migrate()
+    notifier = FakeNotifier()
+    scraper = FailingDetails([[listing('1')], [listing('1')], [listing('1')]])
+    automation = CashConvertersAutomation(repo, scraper, notifier, config())
+    automation.run()
+    assert automation.run().status == RunStatus.SUCCESS
+    saved = repo.get_listing('cashconverters', '1')
+    assert saved.title != 'damaged'
+    assert saved.attributes['detail_failures'] == 1
+    automation.run()
+    assert scraper.calls == 1
+    assert not any(n.title in {'CONTRÔLE PARTIEL', 'QUESTIONS MATÉRIEL'} for n in notifier.sent)
+
+
+def test_reservation_changes_only_on_periodic_refresh(tmp_path):
+    repo = SQLiteRepository(tmp_path / 'state.db')
+    repo.migrate()
+    batches = []
+    for value in (True, False, False):
+        item = listing('1')
+        item.attributes.update(reservable=value, reservation_checked_at=str(value))
+        batches.append([item])
+    automation = CashConvertersAutomation(repo, FakeScraper(batches), FakeNotifier(), config())
+    automation.run()
+    automation.run()
+    assert repo.get_listing('cashconverters', '1').attributes['reservable'] is True
+    repo.set_state('cashconverters-v2', 'last_price_scan', 0)
+    automation.run()
+    assert repo.get_listing('cashconverters', '1').attributes['reservable'] is False
+
+
+def test_partial_catalogue_does_not_remove_unvisited_listings(tmp_path):
+    from automations.cashconverters.scraper import CashConvertersScraper
+
+    class PartialScraper(CashConvertersScraper):
+        def __init__(self):
+            self.http = FakeHttp()
+            self.flags = []
+
+        def collect(self, *, full=False, **kwargs):
+            self.flags.append(full)
+            return [listing('1'), listing('2')] if full else [listing('1')]
+
+        def enrich(self, item):
+            return item
+
+    repo = SQLiteRepository(tmp_path / 'state.db')
+    repo.migrate()
+    scraper = PartialScraper()
+    automation = CashConvertersAutomation(repo, scraper, FakeNotifier(), config())
+    automation.run()
+    automation.run()
+    assert scraper.flags == [True, False]
+    assert repo.state('cashconverters-v2', 'active_catalog') == ['1', '2']
+    assert repo.scan_activity('cashconverters')[-1]['removed_count'] == 0
