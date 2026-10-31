@@ -9,10 +9,26 @@ from automation_platform.core.models import Notification
 from .watch import watch_command
 
 DEFAULTS = {'mode': 'resume', 'reports': True}
-HELP = ('/mode tous | offres | resume | pause\n/rapport on | off\n/test\n/status\n'
-        '/corriger ID ram_gb=32 ram_type=DDR5\n'
-        '/suivre LIEN · /suivis · /arreter ID\n'
-        'Commandes traitées au prochain lancement (environ 15 minutes).')
+HELP = (
+    'AIDE ALFRED\n\n'
+    '/help — rappeler les commandes\n\n'
+    'SUIVI D’ARTICLES\n'
+    '/suivre LIEN — suivre un article Cash Converters (maximum 5)\n'
+    '/suivis — voir les articles suivis et leurs derniers états\n'
+    '/arreter ID — arrêter un suivi (ID affiché dans /suivis)\n'
+    'À chaque nouvelle disponibilité : quatre alertes 💰💰💰.\n\n'
+    'SURVEILLANCE DES PC\n'
+    '/mode tous — toutes les nouvelles annonces et les offres\n'
+    '/mode offres — offres uniquement\n'
+    '/mode resume — nouveautés regroupées et offres immédiates\n'
+    '/mode pause — suspendre les alertes PC (les suivis restent actifs)\n'
+    '/rapport on — activer le compte rendu à chaque scan\n'
+    '/rapport off — désactiver le compte rendu systématique\n\n'
+    '/status — état du moniteur et préférences\n'
+    '/test — recevoir un message de test\n'
+    '/corriger ID ram_gb=32 ram_type=DDR5 — corriger une annonce PC\n\n'
+    'Commandes traitées au prochain scan, environ toutes les 15 minutes.'
+)
 
 
 def poll_commands(repo, notifier, namespace: str) -> None:
@@ -29,7 +45,9 @@ def poll_commands(repo, notifier, namespace: str) -> None:
         prefs = repo.state(namespace, 'preferences', DEFAULTS.copy())
         text = msg.get('text', '').strip()
         answer = HELP
-        if text.startswith('/mode '):
+        if text == '/help':
+            answer = HELP
+        elif text.startswith('/mode '):
             mode = text.split(maxsplit=1)[1].lower()
             if mode in {'tous', 'offres', 'resume', 'pause'}:
                 prefs['mode'] = mode

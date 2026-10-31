@@ -187,6 +187,8 @@ notamment les conditions à résoudre avant d'activer une collecte 2ememain.
 
 ## Suivre un article particulier depuis Telegram
 
+`/help` rappelle toutes les commandes et leur utilisation.
+
 - `/suivre LIEN` ajoute un article Cash Converters Belgique (maximum cinq).
 - `/suivis` affiche les identifiants, liens et derniers états connus.
 - `/arreter ID` arrête le suivi de cet article.

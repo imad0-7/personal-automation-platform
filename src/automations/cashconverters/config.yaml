@@ -12,8 +12,3 @@ scan:
 sources:
   - name: desktops
     url: "https://www.cashconverters.be/fr/164-ordinateurs-de-bureau?order=product.date_add.desc"
-
-# Checked independently on every scan, including during desktop catalogue outages.
-watch:
-  title: "RTX 3090 Ti MSI 24 Go"
-  url: "https://www.cashconverters.be/fr/accessoires-informatique/1278034-carte-graphique-msi-rtx-3090-ti-24gb.html"
