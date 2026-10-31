@@ -21,6 +21,9 @@ class TelegramNotifier:
     def notify(self, notification: Notification) -> None:
         icon = "🔥" if notification.priority.value == "urgent" else "🆕"
         text = f"{icon} <b>{html.escape(notification.title)}</b>\n\n{notification.message}"
+        prefix = notification.metadata.get("telegram_prefix")
+        if prefix:
+            text = html.escape(str(prefix)) + "\n\n" + text
         if notification.url:
             text += f'\n\n<a href="{html.escape(notification.url, quote=True)}">Voir l’annonce</a>'
         try:

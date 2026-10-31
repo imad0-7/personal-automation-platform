@@ -25,6 +25,9 @@ class CashConvertersConfig:
     refresh_minutes: int = 120
     full_scan_minutes: int = 1440
 
+    watched_url: str | None = None
+    watched_title: str = "Article suivi"
+
     @classmethod
     def load(cls, path: Path | None = None) -> CashConvertersConfig:
         path = path or Path(__file__).with_name("config.yaml")
@@ -40,4 +43,6 @@ class CashConvertersConfig:
             tracked_items_limit=int(scan.get('tracked_items_limit', 100)),
             refresh_minutes=int(scan.get('refresh_minutes', 120)),
             full_scan_minutes=int(scan.get('full_scan_minutes', 1440)),
+            watched_url=raw.get('watch', {}).get('url'),
+            watched_title=str(raw.get('watch', {}).get('title', 'Article suivi')),
         )

@@ -13,6 +13,7 @@ from .controls import DEFAULTS, poll_commands
 from .hardware import analyze_listing
 from .parser import ParserFailure
 from .scraper import CashConvertersScraper
+from .watch import refresh_watch
 
 AUTOMATION_NAME = 'cashconverters'
 STATE = 'cashconverters-v2'
@@ -66,6 +67,9 @@ class CashConvertersAutomation:
         now = summary.started_at
         bucket = str(int(now.timestamp()) // 900)
         repo.cancel_obsolete_alerts(AUTOMATION_NAME)
+        watch_prefix = None
+        if self.config.watched_url:
+            watch_prefix = refresh_watch(repo, self.scraper.http, self.config, self._queue)
         try:
             try:
                 poll_commands(repo, self.notifier, self.namespace)
@@ -265,6 +269,11 @@ class CashConvertersAutomation:
                 title='ERREUR DU MONITEUR', message='Échec interne ; consulter GitHub Actions.'))
         try:
             for ident, notification in repo.pending_notifications(AUTOMATION_NAME):
+                # Decorate at delivery time so retries and command replies use the current state.
+                notification = deepcopy(notification)
+                notification.metadata.pop('telegram_prefix', None)
+                if watch_prefix:
+                    notification.metadata['telegram_prefix'] = watch_prefix
                 self.notifier.notify(notification)
                 repo.mark_notification_sent(ident, self.notifier.backend_name)
                 summary.notifications_sent += 1
