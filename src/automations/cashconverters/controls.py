@@ -6,9 +6,12 @@ import shlex
 
 from automation_platform.core.models import Notification
 
+from .watch import watch_command
+
 DEFAULTS = {'mode': 'resume', 'reports': True}
 HELP = ('/mode tous | offres | resume | pause\n/rapport on | off\n/test\n/status\n'
         '/corriger ID ram_gb=32 ram_type=DDR5\n'
+        '/suivre LIEN · /suivis · /arreter ID\n'
         'Commandes traitées au prochain lancement (environ 15 minutes).')
 
 
@@ -39,6 +42,8 @@ def poll_commands(repo, notifier, namespace: str) -> None:
         elif text == '/status':
             answer = f"Mode : {prefs['mode']} — rapports : {prefs['reports']}\n"
             answer += str(repo.state('cashconverters-v2', 'last_status', 'Pas encore de scan V2'))
+        elif text.split() and text.split()[0] in {'/suivre', '/suivis', '/arreter'}:
+            answer = watch_command(repo, namespace, text)
         elif text.startswith('/corriger '):
             try:
                 args = shlex.split(text)

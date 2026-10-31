@@ -13,7 +13,7 @@ from .controls import DEFAULTS, poll_commands
 from .hardware import analyze_listing
 from .parser import ParserFailure
 from .scraper import CashConvertersScraper
-from .watch import refresh_watch
+from .watch import refresh_watches
 
 AUTOMATION_NAME = 'cashconverters'
 STATE = 'cashconverters-v2'
@@ -68,13 +68,13 @@ class CashConvertersAutomation:
         bucket = str(int(now.timestamp()) // 900)
         repo.cancel_obsolete_alerts(AUTOMATION_NAME)
         watch_prefix = None
-        if self.config.watched_url:
-            watch_prefix = refresh_watch(repo, self.scraper.http, self.config, self._queue)
         try:
             try:
                 poll_commands(repo, self.notifier, self.namespace)
             except Exception as exc:  # noqa: BLE001 - commands cannot block monitoring
                 summary.errors.append('command_poll: ' + type(exc).__name__)
+            watch_prefix = refresh_watches(
+                repo, self.scraper.http, self.config, self.namespace, self._queue)
             prefs = repo.state(self.namespace, 'preferences', DEFAULTS.copy())
             baseline = not repo.state(STATE, 'baseline', False)
             last_price = repo.state(STATE, 'last_price_scan', 0)
@@ -269,6 +269,11 @@ class CashConvertersAutomation:
                 title='ERREUR DU MONITEUR', message='Échec interne ; consulter GitHub Actions.'))
         try:
             for ident, notification in repo.pending_notifications(AUTOMATION_NAME):
+                watched_url = notification.metadata.get('watch_url')
+                active_watches = repo.state(self.namespace, 'watches', {})
+                if watched_url and watched_url not in {x['url'] for x in active_watches.values()}:
+                    repo.mark_notification_sent(ident, 'cancelled')
+                    continue
                 # Decorate at delivery time so retries and command replies use the current state.
                 notification = deepcopy(notification)
                 notification.metadata.pop('telegram_prefix', None)

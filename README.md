@@ -185,15 +185,18 @@ plus « Contrôle partiel » et les ambiguïtés ne demandent plus de correction
 Voir [le diagnostic et la politique des sources](docs/reliability-and-sources.md),
 notamment les conditions à résoudre avant d'activer une collecte 2ememain.
 
-## Article épinglé : RTX 3090 Ti
+## Suivre un article particulier depuis Telegram
 
-Le bloc `watch` de `config.yaml` suit la fiche 1278034 indépendamment des PC complets.
-Un contrôle dédié est effectué à chaque scan (environ 15 minutes). Tous les messages
-Telegram du watcher commencent par « Réservé » ou « Non réservé » et le nom de la carte.
-La première disponibilité détectée, puis chaque retour à la disponibilité après réservation,
-déclenche quatre messages consécutifs 💰💰💰. Les scans suivants ne répètent pas cette rafale
-tant que l'article reste disponible. Les alertes utilisent la file persistante existante.
-En cas d'échec, « État non vérifié » remplace le statut et précise le dernier état connu.
-Deux réponses 404/410 consécutives terminent le suivi avec un dernier message ;
-une panne réseau, une page illisible ou une erreur serveur ne terminent jamais le suivi.
-Retirer le bloc `watch` désactive ce suivi.
+- `/suivre LIEN` ajoute un article Cash Converters Belgique (maximum cinq).
+- `/suivis` affiche les identifiants, liens et derniers états connus.
+- `/arreter ID` arrête le suivi de cet article.
+
+Les commandes sont traitées au prochain scan, environ toutes les 15 minutes. Le suivi
+est enregistré dans SQLite et reste actif entre les scans, indépendamment du catalogue PC.
+Les messages commencent par les statuts des articles suivis. La première disponibilité
+puis chaque retour à la disponibilité après une réservation déclenche quatre alertes 💰💰💰.
+Les scans suivants ne répètent pas la rafale tant que l'article reste disponible.
+En cas d'échec, le préfixe indique « État non vérifié » avec le dernier contrôle connu.
+Deux réponses 404/410 consécutives terminent automatiquement le suivi avec un dernier message.
+Une panne réseau ou une page illisible ne termine pas le suivi. Aucun article n'est
+préconfiguré ; le suivi ponctuel de la RTX 3090 Ti 1278034 a été retiré.
