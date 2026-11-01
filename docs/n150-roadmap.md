@@ -60,3 +60,12 @@ Références :
 - https://github.com/dgtlmoon/changedetection.io
 - https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
 - https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html
+
+
+## Services homelab à garder pour la suite
+
+- Pistes appréciées par l'utilisateur : Dockge, Uptime Kuma, Homepage, n8n, Paperless-ngx, Jellyfin, Immich, AdGuard Home, Syncthing et Vaultwarden ; installation et priorités à confirmer.
+- Machine secondaire disponible : Dell OptiPlex 760, processeur annoncé comme Intel Core Duo (référence exacte à vérifier), 4 Go de RAM, SSD 128 Go. Rôles envisagés : tests, sauvegardes et surveillance légère ; compatibilité et consommation à vérifier avant usage permanent.
+- Jellyfin et l'écosystème *arr sont à étudier : Sonarr pour les séries, Radarr pour les films, Prowlarr pour les indexeurs, un client de téléchargement comme qBittorrent, Bazarr pour les sous-titres.
+- Comprendre le fonctionnement et les sources autorisées avant toute installation de cette chaîne. Aucun téléchargement ni configuration de sources n'a été demandé ou effectué.
+- Prévoir les besoins de stockage multimédia et vérifier les capacités de lecture/transcodage du Firebat selon les usages.
