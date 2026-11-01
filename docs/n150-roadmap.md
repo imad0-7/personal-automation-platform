@@ -89,3 +89,17 @@ Références :
 - Envoi d'un lien au bot Telegram puis choix du suivi au moyen de boutons.
 - Centre d'activité commun : changements, notifications et erreurs ; préférences d'urgence et de regroupement par utilisateur.
 - File de tâches avec reprise après redémarrage et tentatives bornées.
+
+
+## Veille de prix multiplateforme : besoin ajouté
+
+- L'utilisateur souhaite un service de recherche et suivi des prix sur plusieurs plateformes, explicitement 2ememain/2dehands et Dealabs, en plus de Cash Converters.
+- Cible : service hébergé sur le N150 et intégré au dashboard personnel de chaque compte, avec alertes Telegram.
+- Prévoir trois usages : découverte de nouvelles offres, suivi d'un lien précis, et historique/comparaison pour un produit recherché.
+- Ajouter des connecteurs par source, en privilégiant selon disponibilité les API/flux autorisés et alertes officielles, puis les méthodes de surveillance adaptées aux pages accessibles. Vérifier la faisabilité de chaque source avant de promettre la collecte ou une cadence.
+- Dealabs : exploiter les offres signalées en gardant leurs conditions, la date, le marchand et le lien ; ne pas présenter Dealabs comme un relevé exhaustif des prix du marché.
+- Normaliser modèle exact et variante, état neuf/occasion, prix, frais de livraison, lieu et disponibilité. Distinguer les conditions promotionnelles et le cashback du prix payé immédiatement.
+- Dédupliquer les annonces et réutiliser les collectes communes pour les deux utilisateurs.
+- Filtres souhaités à proposer : mots-clés, exclusions, prix maximal, zone géographique, prix en baisse et disponibilité.
+- Vérifier livraison en Belgique et conditions d'éligibilité des promotions avant d'annoncer un prix exploitable.
+- Ces connecteurs supplémentaires ne sont pas encore implémentés ; le watcher Cash Converters reste la source active existante.
