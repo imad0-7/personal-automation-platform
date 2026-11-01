@@ -69,3 +69,23 @@ Références :
 - Jellyfin et l'écosystème *arr sont à étudier : Sonarr pour les séries, Radarr pour les films, Prowlarr pour les indexeurs, un client de téléchargement comme qBittorrent, Bazarr pour les sous-titres.
 - Comprendre le fonctionnement et les sources autorisées avant toute installation de cette chaîne. Aucun téléchargement ni configuration de sources n'a été demandé ou effectué.
 - Prévoir les besoins de stockage multimédia et vérifier les capacités de lecture/transcodage du Firebat selon les usages.
+
+
+## Diagnostic IA : piste retenue
+
+- L'utilisateur souhaite pouvoir demander une aide IA depuis le N150 avec son abonnement ChatGPT Plus, sans clé API ni facturation API séparée.
+- Voie retenue à étudier : Codex CLI sur la machine, connecté avec le compte ChatGPT ; les requêtes consomment les limites de l'abonnement.
+- Lorsqu'un service rencontre un problème, préparer un diagnostic avec les erreurs et le contexte utiles, demander l'autorisation via Telegram ou le dashboard, puis lancer Codex.
+- Distinguer l'autorisation de diagnostic de l'application d'une correction ; prévoir validation, tests et retour arrière.
+- Prévoir un nombre limité de tentatives pour éviter les boucles et maîtriser l'usage.
+- Open WebUI Computer est une interface complémentaire possible : sa documentation décrit des backends d'agents utilisant la connexion CLI existante. Compatibilité/version à valider lors de l'installation.
+- Aucune connexion au compte ni installation sur le N150 n'a encore été réalisée.
+
+## Améliorations proposées, à sélectionner
+
+- Sauvegardes automatiques avec essais de restauration, copie secondaire sur le Dell et copie indépendante pour les données importantes.
+- Contrôle du dernier scan effectivement terminé, du prochain scan attendu et des retards, en complément de la disponibilité HTTP.
+- Environnement de test et déploiements réversibles avant modification des services utilisés par les deux comptes.
+- Envoi d'un lien au bot Telegram puis choix du suivi au moyen de boutons.
+- Centre d'activité commun : changements, notifications et erreurs ; préférences d'urgence et de regroupement par utilisateur.
+- File de tâches avec reprise après redémarrage et tentatives bornées.
