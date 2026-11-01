@@ -14,7 +14,10 @@ HELP = (
     '/help — rappeler les commandes\n\n'
     'SUIVI D’ARTICLES\n'
     '/suivre LIEN — suivre un article Cash Converters (maximum 5)\n'
-    '/suivis — voir les articles suivis et leurs derniers états\n'
+    '/suivis — voir tous les articles suivis et leurs derniers états\n'
+    '/prix LIEN [LIEN…] — ajouter un ou plusieurs suivis de prix (maximum 20)\n'
+    '/prix — afficher la liste des prix surveillés\n'
+    '/gpus — afficher les cartes graphiques suivies automatiquement\n'
     '/arreter ID — arrêter un suivi (ID affiché dans /suivis)\n'
     'À chaque nouvelle disponibilité : quatre alertes 💰💰💰.\n\n'
     'SURVEILLANCE DES PC\n'
@@ -60,7 +63,7 @@ def poll_commands(repo, notifier, namespace: str) -> None:
         elif text == '/status':
             answer = f"Mode : {prefs['mode']} — rapports : {prefs['reports']}\n"
             answer += str(repo.state('cashconverters-v2', 'last_status', 'Pas encore de scan V2'))
-        elif text.split() and text.split()[0] in {'/suivre', '/suivis', '/arreter'}:
+        elif text.split() and text.split()[0] in {'/suivre', '/suivis', '/arreter', '/prix', '/gpus'}:
             answer = watch_command(repo, namespace, text)
         elif text.startswith('/corriger '):
             try:
@@ -94,6 +97,18 @@ def poll_commands(repo, notifier, namespace: str) -> None:
             except (ValueError, IndexError):
                 answer = 'Correction invalide. Exemple : /corriger 12345 ram_gb=32 ram_type=DDR5'
         repo.set_state(namespace, 'preferences', prefs)
-        repo.queue_event('cashconverters', f'{namespace}:command:{uid}',
-                         Notification(title='ALFRED', message=html.escape(answer)))
+        # Long watch lists can exceed Telegram's message limit; split before HTML escaping.
+        chunk, chunks = '', []
+        for line in answer.splitlines(keepends=True):
+            for start in range(0, len(line), 1800):
+                part = line[start:start + 1800]
+                if len(chunk) + len(part) > 2600:
+                    chunks.append(chunk)
+                    chunk = ''
+                chunk += part
+        if chunk:
+            chunks.append(chunk)
+        for index, chunk in enumerate(chunks):
+            repo.queue_event('cashconverters', f'{namespace}:command:{uid}:{index}',
+                             Notification(title='ALFRED', message=html.escape(chunk)))
         repo.set_state(namespace, 'telegram_offset', uid + 1)

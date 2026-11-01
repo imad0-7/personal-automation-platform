@@ -12,3 +12,13 @@ scan:
 sources:
   - name: desktops
     url: "https://www.cashconverters.be/fr/164-ordinateurs-de-bureau?order=product.date_add.desc"
+
+# Standalone GPUs only; desktop PCs keep their own existing feed and rules.
+gpus:
+  enabled: true
+  models: [3070, 3080, 3090, 4060, 4070, 4080, 4090, 5060, 5070, 5080, 5090]
+  sources:
+    - name: gpu-rtx
+      url: "https://www.cashconverters.be/fr/recherche?controller=search&s=rtx&order=product.date_add.desc"
+    - name: gpu-cards
+      url: "https://www.cashconverters.be/fr/recherche?controller=search&s=carte+graphique&order=product.date_add.desc"

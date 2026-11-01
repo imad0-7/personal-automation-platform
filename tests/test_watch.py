@@ -54,7 +54,7 @@ def test_watch_lifecycle_and_telegram_first_line(tmp_path):
     assert len(requests) == 5
     assert len(queued) == 5
     assert all('💰💰💰' in n.title for n in queued[:4])
-    assert queued[-1].title == 'FIN DU SUIVI'
+    assert queued[-1].metadata['watch_final'] is True
     repo.close()
 
 
@@ -113,11 +113,11 @@ def test_four_alerts_per_availability_episode_without_scan_duplicates(tmp_path):
             f'<button class="add-to-cart" data-button-action="add-to-cart" {disabled}></button>'))
 
     with HttpClient(transport=httpx.MockTransport(handler)) as client:
-        for expected_count in [4, 4, 4, 8, 8]:
+        for expected_count in [4, 4, 5, 9, 9]:
             refresh_watch(repo, client, config, lambda k, n: queued.append((k, n)))
             assert len(queued) == expected_count
-    assert len({key for key, _ in queued}) == 8
-    assert all('💰💰💰' in n.title for _, n in queued)
+    assert len({key for key, _ in queued}) == 9
+    assert sum('💰💰💰' in n.title for _, n in queued) == 8
     repo.close()
 
 

@@ -191,14 +191,42 @@ notamment les conditions à résoudre avant d'activer une collecte 2ememain.
 
 - `/suivre LIEN` ajoute un article Cash Converters Belgique (maximum cinq).
 - `/suivis` affiche les identifiants, liens et derniers états connus.
+- `/prix LIEN [LIEN…]` ajoute un ou plusieurs articles à la liste des prix surveillés (maximum 20).
+- `/prix` affiche les prix suivis ; toute hausse ou baisse déclenche une alerte.
+- `/gpus` affiche les cartes graphiques suivies automatiquement.
 - `/arreter ID` arrête le suivi de cet article.
 
 Les commandes sont traitées au prochain scan, environ toutes les 15 minutes. Le suivi
 est enregistré dans SQLite et reste actif entre les scans, indépendamment du catalogue PC.
-Les messages commencent par les statuts des articles suivis. La première disponibilité
-puis chaque retour à la disponibilité après une réservation déclenche quatre alertes 💰💰💰.
+Les articles épinglés avec `/suivre` affichent leur statut en tête des messages. Pour ces
+articles, la première disponibilité puis chaque retour à la disponibilité après une
+réservation déclenche quatre alertes 💰💰💰. Les suivis ajoutés avec `/prix` ne produisent
+que les alertes de prix et de disparition.
 Les scans suivants ne répètent pas la rafale tant que l'article reste disponible.
 En cas d'échec, le préfixe indique « État non vérifié » avec le dernier contrôle connu.
-Deux réponses 404/410 consécutives terminent automatiquement le suivi avec un dernier message.
+Deux réponses 404/410 consécutives déclenchent un dernier message puis retirent automatiquement
+l’article de toutes les listes actives. Ce message final reste dans la file persistante
+jusqu’à sa livraison, même après le retrait du lien.
 Une panne réseau ou une page illisible ne termine pas le suivi. Aucun article n'est
 préconfiguré ; le suivi ponctuel de la RTX 3090 Ti 1278034 a été retiré.
+
+## Cartes graphiques vendues seules
+
+Le module `gpus.py` lit les recherches « RTX » et « carte graphique » puis filtre
+les composants indépendamment du catalogue des PC.
+Les modèles configurés sont RTX 3070, 3080, 3090, 4060, 4070, 4080, 4090, 5060, 5070,
+5080 et 5090, avec les variantes Ti, Super et Ti Super. Les PC, portables et accessoires
+comme les supports ou câbles sont exclus. Les cartes mal classées dans une autre catégorie
+restent détectables grâce au titre et au lien. Aucun filtre de prix n'est appliqué.
+
+Le premier inventaire est silencieux ; les nouvelles annonces suivantes déclenchent une
+alerte par carte (modèle, prix, magasin, VRAM si explicite et disponibilité connue).
+Les cartes ciblées sont ensuite suivies automatiquement : prix, réservation et disparition.
+Une disponibilité retrouvée produit une seule alerte ; `/suivre LIEN` permet d'épingler
+une carte pour bénéficier des quatre alertes 💰 et du statut en tête des messages.
+`/arreter ID` empêche la réinscription automatique de cet identifiant.
+
+Les nouvelles annonces sont recherchées à chaque scan et le résultat complet de chaque
+recherche est relu toutes les deux heures pour rattraper les annonces plus anciennes.
+Les contrôles des liens suivis ne déduisent jamais une disparition d'une panne réseau,
+d'un blocage HTTP 403, d'une réponse 500 ou d'un changement de format HTML.

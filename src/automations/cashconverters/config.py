@@ -25,6 +25,10 @@ class CashConvertersConfig:
     refresh_minutes: int = 120
     full_scan_minutes: int = 1440
 
+    gpu_enabled: bool = False
+    gpu_sources: tuple[Feed, ...] = ()
+    gpu_models: tuple[str, ...] = ()
+
     watched_url: str | None = None
     watched_title: str = "Article suivi"
 
@@ -43,6 +47,10 @@ class CashConvertersConfig:
             tracked_items_limit=int(scan.get('tracked_items_limit', 100)),
             refresh_minutes=int(scan.get('refresh_minutes', 120)),
             full_scan_minutes=int(scan.get('full_scan_minutes', 1440)),
+            gpu_enabled=bool(raw.get('gpus', {}).get('enabled', False)),
+            gpu_sources=tuple(Feed(str(x['name']), str(x['url']))
+                              for x in raw.get('gpus', {}).get('sources', [])),
+            gpu_models=tuple(str(x) for x in raw.get('gpus', {}).get('models', [])),
             watched_url=raw.get('watch', {}).get('url'),
             watched_title=str(raw.get('watch', {}).get('title', 'Article suivi')),
         )

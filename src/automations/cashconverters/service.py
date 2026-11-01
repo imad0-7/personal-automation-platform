@@ -10,6 +10,7 @@ from automation_platform.core.logging import log_event
 from automation_platform.core.models import Notification, Priority, RunStatus, RunSummary, utc_now
 
 from .controls import DEFAULTS, poll_commands
+from .gpus import discover_gpus
 from .hardware import analyze_listing
 from .parser import ParserFailure
 from .scraper import CashConvertersScraper
@@ -73,6 +74,25 @@ class CashConvertersAutomation:
                 poll_commands(repo, self.notifier, self.namespace)
             except Exception as exc:  # noqa: BLE001 - commands cannot block monitoring
                 summary.errors.append('command_poll: ' + type(exc).__name__)
+            if self.config.gpu_enabled:
+                gpu_incident = repo.state(self.namespace, 'gpu_incident', {})
+                try:
+                    discover_gpus(repo, self.scraper.http, self.config, self.namespace, self._queue)
+                    if gpu_incident.get('notified'):
+                        self._queue('gpu-recovery:' + gpu_incident['id'], Notification(
+                            title='SUIVI GPU RÉTABLI', message='La recherche de cartes graphiques a repris.'))
+                    repo.set_state(self.namespace, 'gpu_incident', {})
+                except (ParserFailure, httpx.HTTPError) as exc:
+                    summary.errors.append('gpu_catalog: ' + type(exc).__name__)
+                    gpu_incident.setdefault('id', str(run_id))
+                    gpu_incident['failures'] = gpu_incident.get('failures', 0) + 1
+                    if gpu_incident['failures'] >= 2 and not gpu_incident.get('notified'):
+                        self._queue('gpu-incident:' + gpu_incident['id'], Notification(
+                            title='RECHERCHE GPU INDISPONIBLE',
+                            message='Deux scans de cartes graphiques ont échoué. Les données connues '
+                                    'sont conservées ; nouvelle tentative au prochain scan.'))
+                        gpu_incident['notified'] = True
+                    repo.set_state(self.namespace, 'gpu_incident', gpu_incident)
             watch_prefix = refresh_watches(
                 repo, self.scraper.http, self.config, self.namespace, self._queue)
             prefs = repo.state(self.namespace, 'preferences', DEFAULTS.copy())
@@ -271,7 +291,8 @@ class CashConvertersAutomation:
             for ident, notification in repo.pending_notifications(AUTOMATION_NAME):
                 watched_url = notification.metadata.get('watch_url')
                 active_watches = repo.state(self.namespace, 'watches', {})
-                if watched_url and watched_url not in {x['url'] for x in active_watches.values()}:
+                if (watched_url and not notification.metadata.get('watch_final')
+                        and watched_url not in {x['url'] for x in active_watches.values()}):
                     repo.mark_notification_sent(ident, 'cancelled')
                     continue
                 # Decorate at delivery time so retries and command replies use the current state.
