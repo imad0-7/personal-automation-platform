@@ -113,6 +113,7 @@ class CashConvertersAutomation:
             else:
                 listings = self.scraper.collect()
             summary.observed = len(listings)
+            catalog_total = max([x.attributes.get('catalog_total') or 0 for x in listings] or [0])
             previous = repo.state(STATE, 'recent_count', 0)
             if (len(listings) < self.config.minimum_products or
                     (not baseline and previous and len(listings) < previous * self.config.sudden_drop_ratio)):
@@ -222,8 +223,15 @@ class CashConvertersAutomation:
                 if tracked and (baseline or price_scan or new):
                     price_snapshot[listing.external_id] = listing.price_cents
             if not baseline and prefs['mode'] != 'pause' and (ordinary or price_lines or prefs['reports']):
+                scan_kind = ('Recensement complet' if full_scan else
+                             'Actualisation prix/réservations' if price_scan else
+                             'Recherche de nouveautés')
                 self._chunks('report:' + str(run_id), 'COMPTE RENDU CASH CONVERTERS', [
-                    f'{summary.observed} PC contrôlés · {summary.discovered} nouveaux',
+                    f'{scan_kind} : {summary.observed} annonces lues · {summary.discovered} nouveaux',
+                    f'Catalogue du site : {catalog_total} PC' if catalog_total else
+                    'Taille totale du catalogue non vérifiée.',
+                    (f'Suivi périodique : les {self.config.tracked_items_limit} derniers PC, '
+                     f'toutes les {self.config.refresh_minutes} min.'),
                     *ordinary, *price_lines, 'Aucune nouveauté.' if not summary.discovered else '',
                 ])
             # Ambiguities remain in the dashboard; they never solicit manual input.
