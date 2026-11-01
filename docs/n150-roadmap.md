@@ -4,7 +4,7 @@ Mise à jour : 1er novembre 2026.
 
 ## Contexte confirmé
 
-- Machine disponible : Intel N150 avec 16 Go de RAM, actuellement sous Windows.
+- Machine disponible : mini-PC Firebat (modèle exact non précisé), Intel N150 avec 16 Go de RAM, actuellement sous Windows.
 - L'utilisateur accepte d'installer Linux si cela apporte un avantage.
 - Objectif : héberger le watcher Cash Converters en continu, avec une cadence locale régulière.
 - Conserver les suivis et l'historique lors de la migration de la base SQLite.
