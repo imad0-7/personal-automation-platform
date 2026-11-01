@@ -9,6 +9,7 @@ import httpx
 from automation_platform.core.logging import log_event
 from automation_platform.core.models import Notification, Priority, RunStatus, RunSummary, utc_now
 
+from .buttons import attach_buttons
 from .controls import DEFAULTS, poll_commands
 from .gpus import discover_gpus
 from .hardware import analyze_listing
@@ -300,6 +301,7 @@ class CashConvertersAutomation:
                 notification.metadata.pop('telegram_prefix', None)
                 if watch_prefix:
                     notification.metadata['telegram_prefix'] = watch_prefix
+                attach_buttons(repo, self.namespace, notification)
                 self.notifier.notify(notification)
                 repo.mark_notification_sent(ident, self.notifier.backend_name)
                 summary.notifications_sent += 1

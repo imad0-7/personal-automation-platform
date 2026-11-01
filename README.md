@@ -230,3 +230,19 @@ Les nouvelles annonces sont recherchées à chaque scan et le résultat complet 
 recherche est relu toutes les deux heures pour rattraper les annonces plus anciennes.
 Les contrôles des liens suivis ne déduisent jamais une disparition d'une panne réseau,
 d'un blocage HTTP 403, d'une réponse 500 ou d'un changement de format HTML.
+
+## Boutons Telegram
+
+Les alertes individuelles d’articles comportent des boutons « Voir l’annonce »,
+« Suivre le prix », « Disponibilité ×4 » et « Arrêter le suivi ». Les boutons de suivi
+utilisent les mêmes règles et limites que `/prix`, `/suivre` et `/arreter`.
+Un menu donne accès à « Mes suivis », « Prix surveillés », « Cartes graphiques » et « Aide ».
+Les listes affichent un bouton pour ouvrir ou arrêter chaque article.
+Les nouveaux messages affichent ces boutons ; les anciens messages ne sont pas modifiés.
+
+Les liens s’ouvrent directement. Les actions et le menu sont traités au prochain scan,
+environ toutes les 15 minutes. Un clic provenant d’un autre utilisateur ou d’un groupe
+est ignoré. Le lien produit est résolu côté serveur à partir d’un identifiant court ;
+aucune URL fournie dans les données de callback n’est acceptée. Un article confirmé
+comme disparu ne peut pas être réactivé depuis un ancien bouton. L’expiration de la
+confirmation contextuelle Telegram n’empêche pas l’action ni la réponse persistante.

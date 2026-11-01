@@ -2,16 +2,20 @@
 from __future__ import annotations
 
 import html
+import re
 import shlex
 
 from automation_platform.core.models import Notification
 
+from .buttons import MENU_TEXT, callback_command
 from .watch import watch_command
 
 DEFAULTS = {'mode': 'resume', 'reports': True}
 HELP = (
     'AIDE ALFRED\n\n'
-    '/help — rappeler les commandes\n\n'
+    '/help — rappeler les commandes\n'
+    'Les boutons sous les alertes permettent de suivre un prix, activer les quatre alertes '
+    'ou arrêter le suivi. Le menu donne accès aux listes et à l’aide.\n\n'
     'SUIVI D’ARTICLES\n'
     '/suivre LIEN — suivre un article Cash Converters (maximum 5)\n'
     '/suivis — voir tous les articles suivis et leurs derniers états\n'
@@ -40,15 +44,27 @@ def poll_commands(repo, notifier, namespace: str) -> None:
     offset = repo.state(namespace, 'telegram_offset', 0)
     for update in notifier.get_updates(offset):
         uid = update['update_id']
-        msg = update.get('message', {})
+        if uid < offset:
+            continue
+        callback = update.get('callback_query')
+        msg = (callback.get('message', {}) if callback else update.get('message', {}))
         chat = msg.get('chat', {})
-        if str(chat.get('id')) != notifier.chat_id or chat.get('type') != 'private':
+        if (str(chat.get('id')) != notifier.chat_id or chat.get('type') != 'private'
+                or callback and str(callback.get('from', {}).get('id')) != notifier.chat_id):
             repo.set_state(namespace, 'telegram_offset', uid + 1)
             continue
         prefs = repo.state(namespace, 'preferences', DEFAULTS.copy())
-        text = msg.get('text', '').strip()
-        answer = HELP
-        if text == '/help':
+        callback_error = None
+        if callback:
+            text, callback_error = callback_command(repo, namespace, callback.get('data', ''))
+            text = text or ''
+            if hasattr(notifier, 'answer_callback'):
+                notifier.answer_callback(callback['id'])
+        else:
+            text = msg.get('text', '').strip()
+        text = MENU_TEXT.get(text, text)
+        answer = callback_error or HELP
+        if text in {'/help', '/start'}:
             answer = HELP
         elif text.startswith('/mode '):
             mode = text.split(maxsplit=1)[1].lower()
@@ -110,5 +126,8 @@ def poll_commands(repo, notifier, namespace: str) -> None:
             chunks.append(chunk)
         for index, chunk in enumerate(chunks):
             repo.queue_event('cashconverters', f'{namespace}:command:{uid}:{index}',
-                             Notification(title='ALFRED', message=html.escape(chunk)))
+                             Notification(title='ALFRED', message=html.escape(chunk), metadata={
+                                 'inline_menu': True,
+                                 'watch_ids': re.findall(r'^(\d+) — ', chunk, re.MULTILINE),
+                             }))
         repo.set_state(namespace, 'telegram_offset', uid + 1)
