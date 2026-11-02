@@ -103,3 +103,23 @@ Références :
 - Filtres souhaités à proposer : mots-clés, exclusions, prix maximal, zone géographique, prix en baisse et disponibilité.
 - Vérifier livraison en Belgique et conditions d'éligibilité des promotions avant d'annoncer un prix exploitable.
 - Ces connecteurs supplémentaires ne sont pas encore implémentés ; le watcher Cash Converters reste la source active existante.
+
+
+## Extension des produits recherchés — 2 novembre 2026
+
+### RAM
+
+- Ajouter à la future veille multiplateforme les barrettes et kits de RAM.
+- Critères proposés : DDR4/DDR5, DIMM/SO-DIMM, capacité totale et par barrette, nombre de barrettes, fréquence, latence, état, prix livré ; RGB/couleur/EXPO/XMP en options.
+- Pistes de recherches : DDR5 2×16 Go et DDR4 2×16 Go, éventuellement DDR4 2×8 Go. Les plafonds restent à fixer, ces profils ne sont pas encore activés.
+- Conserver un état « à vérifier » pour les annonces incomplètes ; ne pas confondre kits, barrettes seules, RAM serveur et configurations PC.
+
+### Mac avec puce Apple M
+
+- Demande explicite : inclure tous les Mac à puce Apple M à prix intéressant. Cela remplace, pour cette veille, l'ancienne exclusion des Mac et des portables.
+- Couvrir Mac mini, MacBook Air/Pro, iMac, Mac Studio et Mac Pro lorsqu'ils sont équipés d'une puce M ; toutes générations à partir de M1 et variantes Pro/Max/Ultra applicables.
+- Exclure les Mac Intel et les annonces d'accessoires seuls de ce profil.
+- Évaluer par configuration comparable : gamme, puce exacte, génération, mémoire, stockage, taille d'écran pour les portables, état et batterie si indiqués, garantie et frais de livraison.
+- Définir des plafonds par configuration après actualisation des références de prix ; aucun plafond arbitraire commun à tous les Mac n'a été fixé.
+- Distinguer les prix affichés des ventes conclues et signaler les caractéristiques ou l'état non vérifiés.
+- Les nouveaux profils RAM/Mac sont consignés au périmètre futur ; ils ne sont pas encore implémentés dans les alertes de production.
